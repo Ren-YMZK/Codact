@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useActionState } from 'react'
 import { register } from './actions'
+import { googleLogin } from '@/lib/supabase/auth'
 
 export default function RegisterPage() {
   const [state, action, pending] = useActionState(register, undefined)
@@ -23,6 +24,7 @@ export default function RegisterPage() {
           {/* Googleログイン */}
           <button
             type="button"
+            onClick={googleLogin}
             disabled={pending}
             className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
