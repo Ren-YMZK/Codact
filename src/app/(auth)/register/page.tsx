@@ -1,6 +1,12 @@
+'use client'
+
 import Link from 'next/link'
+import { useActionState } from 'react'
+import { register } from './actions'
 
 export default function RegisterPage() {
+  const [state, action, pending] = useActionState(register, undefined)
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md">
@@ -17,7 +23,8 @@ export default function RegisterPage() {
           {/* Googleログイン */}
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+            disabled={pending}
+            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -50,8 +57,15 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* エラーメッセージ */}
+          {state?.error && (
+            <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+              {state.error}
+            </div>
+          )}
+
           {/* 登録フォーム */}
-          <form className="space-y-4">
+          <form action={action} className="space-y-4">
             <div>
               <label
                 htmlFor="name"
@@ -66,7 +80,8 @@ export default function RegisterPage() {
                 autoComplete="name"
                 required
                 placeholder="山田 太郎"
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                disabled={pending}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400"
               />
             </div>
 
@@ -84,7 +99,8 @@ export default function RegisterPage() {
                 autoComplete="email"
                 required
                 placeholder="you@example.com"
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                disabled={pending}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400"
               />
             </div>
 
@@ -102,7 +118,8 @@ export default function RegisterPage() {
                 autoComplete="new-password"
                 required
                 placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                disabled={pending}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400"
               />
               <p className="mt-1.5 text-xs text-gray-400">
                 8文字以上で設定してください
@@ -111,9 +128,32 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer mt-2"
+              disabled={pending}
+              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer mt-2 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              新規登録
+              {pending && (
+                <svg
+                  className="w-4 h-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              )}
+              {pending ? '登録中...' : '新規登録'}
             </button>
           </form>
         </div>
