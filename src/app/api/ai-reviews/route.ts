@@ -1,0 +1,180 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { anthropic } from '@/lib/anthropic'
+
+const FREE_LIMIT = 3
+const PAID_LIMIT = 30
+
+const PROMPT_FAILED = `あなたはプログラミング学習サービスのメンターです。
+プログラミング初心者に対して、コードレビューを行ってください。
+
+# ルール
+- 答えやフルコードは絶対に出力しない
+- 初心者にわかりやすい言葉で説明する
+- 丁寧だけど堅すぎない口調にする
+- ビックリマークは積極的に使う
+- 絵文字は使わない
+- ヒントは次の一手がわかる程度にとどめる
+- 出力は5〜10行程度にする
+
+# 問題文
+{problem}
+
+# テスト結果
+{test_result}
+
+# 提出コード
+{code}
+
+# 出力形式
+【良い点】
+（良い点を1〜2点）
+
+【修正ポイント】
+（修正が必要な箇所とその理由）
+
+【ヒント】
+（答えは出さず、次の一手となるヒントのみ）`
+
+const PROMPT_PASSED = `あなたはプログラミング学習サービスのメンターです。
+テストに合格したコードに対して、実務目線でのレビューを行ってください。
+
+# ルール
+- 初心者にわかりやすい言葉で説明する
+- 実務でどう使われるかの観点を含める
+- 改善提案は押しつけにならないよう提案ベースにする
+- 丁寧だけど堅すぎない口調にする
+- ビックリマークは積極的に使う
+- 絵文字は使わない
+- 出力は3〜7行程度にする
+
+# 問題文
+{problem}
+
+# 提出コード
+{code}
+
+# 出力形式
+【良い点】
+（良い点を1〜2点）
+
+【実務的な改善提案】
+（実務観点での改善ポイントと理由）`
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body = await request.json()
+  const { submission_id } = body as { submission_id: string }
+
+  if (!submission_id) {
+    return NextResponse.json({ error: 'submission_id は必須です' }, { status: 400 })
+  }
+
+  // ユーザー情報取得
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('plan, ai_review_count, ai_review_reset_at')
+    .eq('id', user.id)
+    .single()
+
+  if (userError || !userData) {
+    return NextResponse.json({ error: 'ユーザー情報の取得に失敗しました' }, { status: 500 })
+  }
+
+  // 1ヶ月以上経過していたらリセット
+  const resetAt = new Date(userData.ai_review_reset_at)
+  const oneMonthAgo = new Date()
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+
+  let count = userData.ai_review_count
+  if (resetAt <= oneMonthAgo) {
+    await supabase
+      .from('users')
+      .update({ ai_review_count: 0, ai_review_reset_at: new Date().toISOString() })
+      .eq('id', user.id)
+    count = 0
+  }
+
+  // 残り回数チェック
+  const limit = userData.plan === 'paid' ? PAID_LIMIT : FREE_LIMIT
+  if (count >= limit) {
+    return NextResponse.json({ error: 'AIレビューの回数上限に達しました' }, { status: 403 })
+  }
+
+  // 提出情報取得
+  const { data: submission, error: subError } = await supabase
+    .from('submissions')
+    .select('code, status, test_result, lesson_id')
+    .eq('id', submission_id)
+    .eq('user_id', user.id)
+    .single()
+
+  if (subError || !submission) {
+    return NextResponse.json({ error: '提出情報の取得に失敗しました' }, { status: 404 })
+  }
+
+  // Lesson情報取得
+  const { data: lesson, error: lessonError } = await supabase
+    .from('lessons')
+    .select('content')
+    .eq('id', submission.lesson_id)
+    .single()
+
+  if (lessonError || !lesson) {
+    return NextResponse.json({ error: 'Lesson情報の取得に失敗しました' }, { status: 404 })
+  }
+
+  // プロンプト選択・組み立て
+  const isPassed = submission.status === 'passed'
+  const testResultText = isPassed
+    ? '全テストケースに合格しました'
+    : JSON.stringify(submission.test_result, null, 2)
+
+  const prompt = isPassed
+    ? PROMPT_PASSED
+        .replace('{problem}', lesson.content)
+        .replace('{code}', submission.code)
+    : PROMPT_FAILED
+        .replace('{problem}', lesson.content)
+        .replace('{test_result}', testResultText)
+        .replace('{code}', submission.code)
+
+  // Claude API呼び出し
+  let review: string
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    })
+    review = message.content[0].type === 'text' ? message.content[0].text : ''
+  } catch {
+    return NextResponse.json({ error: 'AIレビューの生成に失敗しました' }, { status: 503 })
+  }
+
+  // ai_reviewsテーブルに保存
+  const { data: aiReview, error: insertError } = await supabase
+    .from('ai_reviews')
+    .insert({ user_id: user.id, submission_id, review })
+    .select()
+    .single()
+
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
+
+  // ai_review_countを+1
+  await supabase
+    .from('users')
+    .update({ ai_review_count: count + 1 })
+    .eq('id', user.id)
+
+  return NextResponse.json({ review: aiReview.review })
+}

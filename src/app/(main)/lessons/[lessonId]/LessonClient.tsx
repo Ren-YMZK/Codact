@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Markdown from 'react-markdown'
 import type { Components } from 'react-markdown'
@@ -24,6 +24,7 @@ interface TestCaseResult {
 }
 
 interface SubmissionResult {
+  id: string
   status: 'passed' | 'failed'
   test_result: TestCaseResult[]
 }
@@ -62,8 +63,27 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
   const [isRunning, setIsRunning] = useState(false)
   const [result, setResult] = useState<SubmissionResult | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
+  const [reviewCount, setReviewCount] = useState<{ remaining: number; limit: number } | null>(null)
+  const [isReviewing, setIsReviewing] = useState(false)
+  const [reviewText, setReviewText] = useState<string | null>(null)
+  const [reviewError, setReviewError] = useState<string | null>(null)
 
   const content = lesson.content.replace(/\\n/g, '\n')
+
+  async function fetchReviewCount() {
+    try {
+      const res = await fetch('/api/users/me/ai-review-count')
+      if (res.ok) {
+        const data = await res.json()
+        setReviewCount({ remaining: data.remaining, limit: data.limit })
+      }
+    } catch {
+      // 残り回数取得失敗は無視
+    }
+  }
+
+  // 初回マウント時に残り回数を取得
+  useEffect(() => { fetchReviewCount() }, [])
 
   async function runTest() {
     setIsRunning(true)
@@ -80,7 +100,9 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
         setRunError(data.error ?? 'テストの実行に失敗しました')
         return
       }
-      setResult({ status: data.submission.status, test_result: data.test_result })
+      setResult({ id: data.submission.id, status: data.submission.status, test_result: data.test_result })
+      setReviewText(null)
+      setReviewError(null)
     } catch {
       setRunError('ネットワークエラーが発生しました')
     } finally {
@@ -88,8 +110,34 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
     }
   }
 
+  async function requestReview() {
+    if (!result?.id) return
+    setIsReviewing(true)
+    setReviewText(null)
+    setReviewError(null)
+    try {
+      const res = await fetch('/api/ai-reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submission_id: result.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setReviewError(data.error ?? 'AIレビューの取得に失敗しました')
+        return
+      }
+      setReviewText(data.review)
+      await fetchReviewCount()
+    } catch {
+      setReviewError('ネットワークエラーが発生しました')
+    } finally {
+      setIsReviewing(false)
+    }
+  }
+
   const passed = result?.status === 'passed'
   const failedCases = result?.test_result.filter((r) => !r.passed) ?? []
+  const canReview = result !== null && (reviewCount === null || reviewCount.remaining > 0)
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -163,16 +211,43 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
             </button>
             <button
               type="button"
-              className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+              onClick={requestReview}
+              disabled={!canReview || isReviewing}
+              className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 text-sm font-semibold rounded-lg transition-colors cursor-pointer"
             >
-              AIレビューを受ける
+              {isReviewing ? 'レビュー中...' : 'AIレビューを受ける'}
             </button>
           </div>
 
           {/* 残り回数 */}
-          <p className="text-xs text-gray-400">
-            今月の残り回数：<span className="font-medium text-gray-600">- / -</span>
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-gray-400">
+              今月の残り回数：
+              <span className="font-medium text-gray-600">
+                {reviewCount !== null ? `${reviewCount.remaining} / ${reviewCount.limit}` : '- / -'}
+              </span>
+            </p>
+            {reviewCount !== null && reviewCount.remaining === 0 && (
+              <a href="/pricing" className="text-xs text-blue-600 hover:underline">
+                プランをアップグレードする
+              </a>
+            )}
+          </div>
+
+          {/* AIレビューエラー */}
+          {reviewError && (
+            <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+              {reviewError}
+            </div>
+          )}
+
+          {/* AIレビュー結果 */}
+          {reviewText && (
+            <div className="px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-xs font-semibold text-purple-700 mb-2">AIレビュー</p>
+              <pre className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed font-sans">{reviewText}</pre>
+            </div>
+          )}
 
           {/* エラー表示 */}
           {runError && (
