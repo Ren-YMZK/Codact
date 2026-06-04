@@ -15,18 +15,20 @@ async function assertAdmin() {
 
 export async function addLevel(formData: FormData) {
   await assertAdmin()
+  const courseId = formData.get('courseId') as string
   const admin = createAdminClient()
   await admin.from('levels').insert({
-    course_id: formData.get('course_id') as string,
+    course_id: courseId,
     title: formData.get('title') as string,
     order: Number(formData.get('order')) || 0,
   })
-  revalidatePath('/admin/levels')
+  revalidatePath(`/admin/courses/${courseId}`)
 }
 
 export async function deleteLevel(formData: FormData) {
   await assertAdmin()
+  const courseId = formData.get('courseId') as string
   const admin = createAdminClient()
   await admin.from('levels').delete().eq('id', formData.get('id') as string)
-  revalidatePath('/admin/levels')
+  revalidatePath(`/admin/courses/${courseId}`)
 }

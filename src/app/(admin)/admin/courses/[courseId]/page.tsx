@@ -1,52 +1,70 @@
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { addLevel, deleteLevel } from './actions'
 
-export default async function AdminLevelsPage() {
+export default async function AdminCoursePage({
+  params,
+}: {
+  params: Promise<{ courseId: string }>
+}) {
+  const { courseId } = await params
   const admin = createAdminClient()
-  const [{ data: levels }, { data: courses }] = await Promise.all([
-    admin
-      .from('levels')
-      .select('id, title, order, courses(title)')
-      .order('order', { ascending: true }),
-    admin
-      .from('courses')
-      .select('id, title')
-      .order('order', { ascending: true }),
+
+  const [{ data: course }, { data: levels }] = await Promise.all([
+    admin.from('courses').select('id, title').eq('id', courseId).single(),
+    admin.from('levels').select('id, title, order').eq('course_id', courseId).order('order', { ascending: true }),
   ])
+
+  if (!course) notFound()
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-6">Level管理</h1>
+      {/* パンくず */}
+      <nav className="flex items-center gap-1.5 text-xs text-gray-400 mb-6">
+        <Link href="/admin" className="hover:text-gray-600 transition-colors">管理者トップ</Link>
+        <span>/</span>
+        <span className="text-gray-700 font-medium">{course.title}</span>
+      </nav>
 
-      {/* 一覧 */}
+      <h1 className="text-xl font-bold text-gray-900 mb-6">{course.title} — Level管理</h1>
+
+      {/* Level一覧 */}
       <div className="bg-white rounded-xl border border-gray-200 mb-8 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">order</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">タイトル</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">コース</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {levels?.map((level) => (
               <tr key={level.id}>
-                <td className="px-4 py-3 text-gray-600">{level.order}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">{level.title}</td>
-                <td className="px-4 py-3 text-gray-500">
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {Array.isArray((level as any).courses)
-                    ? (level as any).courses[0]?.title ?? '-'
-                    : (level as any).courses?.title ?? '-'}
-                </td>
+                <td className="px-4 py-3 text-gray-500 w-16">{level.order}</td>
                 <td className="px-4 py-3">
+                  <Link
+                    href={`/admin/courses/${courseId}/levels/${level.id}`}
+                    className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                  >
+                    {level.title}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 flex items-center justify-end gap-4">
+                  <Link
+                    href={`/admin/courses/${courseId}/levels/${level.id}`}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Lesson管理 →
+                  </Link>
                   <form action={deleteLevel}>
                     <input type="hidden" name="id" value={level.id} />
+                    <input type="hidden" name="courseId" value={courseId} />
                     <button
                       type="submit"
                       className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer"
-                      onClick={(e) => { if (!confirm('削除しますか?')) e.preventDefault() }}
+
                     >
                       削除
                     </button>
@@ -56,26 +74,18 @@ export default async function AdminLevelsPage() {
             ))}
             {(!levels || levels.length === 0) && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-400">Levelがありません</td>
+                <td colSpan={3} className="px-4 py-6 text-center text-sm text-gray-400">Levelがありません</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* 追加フォーム */}
+      {/* Level追加フォーム */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-4">Levelを追加</h2>
         <form action={addLevel} className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">コース *</label>
-            <select name="course_id" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">選択してください</option>
-              {courses?.map((c) => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
-          </div>
+          <input type="hidden" name="courseId" value={courseId} />
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">タイトル *</label>
             <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
@@ -84,7 +94,7 @@ export default async function AdminLevelsPage() {
             <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
             <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
           </div>
-          <div className="flex items-end">
+          <div className="col-span-2">
             <button
               type="submit"
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer"

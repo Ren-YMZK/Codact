@@ -23,12 +23,12 @@ export async function addCourse(formData: FormData) {
     description: description || null,
     order: Number(formData.get('order')) || 0,
   })
-  revalidatePath('/admin/courses')
+  revalidatePath('/admin')
 }
 
 export async function deleteCourse(formData: FormData) {
   await assertAdmin()
   const admin = createAdminClient()
   await admin.from('courses').delete().eq('id', formData.get('id') as string)
-  revalidatePath('/admin/courses')
+  revalidatePath('/admin')
 }

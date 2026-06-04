@@ -13,30 +13,40 @@ async function assertAdmin() {
   if (row?.role !== 'admin') redirect('/dashboard')
 }
 
+function levelPath(courseId: string, levelId: string) {
+  return `/admin/courses/${courseId}/levels/${levelId}`
+}
+
 export async function addLesson(formData: FormData) {
   await assertAdmin()
-  const admin = createAdminClient()
+  const courseId = formData.get('courseId') as string
+  const levelId = formData.get('levelId') as string
   const hint = (formData.get('hint') as string).trim()
+  const admin = createAdminClient()
   await admin.from('lessons').insert({
-    level_id: formData.get('level_id') as string,
+    level_id: levelId,
     title: formData.get('title') as string,
     content: formData.get('content') as string,
     initial_code: formData.get('initial_code') as string,
     hint: hint || null,
     order: Number(formData.get('order')) || 0,
   })
-  revalidatePath('/admin/lessons')
+  revalidatePath(levelPath(courseId, levelId))
 }
 
 export async function deleteLesson(formData: FormData) {
   await assertAdmin()
+  const courseId = formData.get('courseId') as string
+  const levelId = formData.get('levelId') as string
   const admin = createAdminClient()
   await admin.from('lessons').delete().eq('id', formData.get('id') as string)
-  revalidatePath('/admin/lessons')
+  revalidatePath(levelPath(courseId, levelId))
 }
 
 export async function addTestCase(formData: FormData) {
   await assertAdmin()
+  const courseId = formData.get('courseId') as string
+  const levelId = formData.get('levelId') as string
   const admin = createAdminClient()
   await admin.from('test_cases').insert({
     lesson_id: formData.get('lesson_id') as string,
@@ -44,12 +54,14 @@ export async function addTestCase(formData: FormData) {
     expected: formData.get('expected') as string,
     order: Number(formData.get('order')) || 0,
   })
-  revalidatePath('/admin/lessons')
+  revalidatePath(levelPath(courseId, levelId))
 }
 
 export async function deleteTestCase(formData: FormData) {
   await assertAdmin()
+  const courseId = formData.get('courseId') as string
+  const levelId = formData.get('levelId') as string
   const admin = createAdminClient()
   await admin.from('test_cases').delete().eq('id', formData.get('id') as string)
-  revalidatePath('/admin/lessons')
+  revalidatePath(levelPath(courseId, levelId))
 }
