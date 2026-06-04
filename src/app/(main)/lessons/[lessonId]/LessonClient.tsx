@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Markdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import CodeEditor from '@/components/editor/CodeEditor'
+import type { LevelSummary } from '@/lib/levelSummaries'
 
 interface Lesson {
   id: string
@@ -32,6 +33,10 @@ interface SubmissionResult {
 interface LessonClientProps {
   lesson: Lesson
   nextLessonId: string | null
+  isLastLesson: boolean
+  levelSummary: LevelSummary | null
+  levelUrl: string
+  initialCode: string
 }
 
 const mdComponents: Components = {
@@ -57,8 +62,15 @@ const mdComponents: Components = {
   },
 }
 
-export default function LessonClient({ lesson, nextLessonId }: LessonClientProps) {
-  const [code, setCode] = useState(lesson.initial_code)
+export default function LessonClient({
+  lesson,
+  nextLessonId,
+  isLastLesson,
+  levelSummary,
+  levelUrl,
+  initialCode,
+}: LessonClientProps) {
+  const [code, setCode] = useState(initialCode)
   const [showHint, setShowHint] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [result, setResult] = useState<SubmissionResult | null>(null)
@@ -67,6 +79,7 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
   const [isReviewing, setIsReviewing] = useState(false)
   const [reviewText, setReviewText] = useState<string | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
+  const [showSummaryModal, setShowSummaryModal] = useState(false)
 
   const content = lesson.content.replace(/\\n/g, '\n')
 
@@ -82,7 +95,6 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
     }
   }
 
-  // 初回マウント時に残り回数を取得
   useEffect(() => { fetchReviewCount() }, [])
 
   async function updateProgress(status: 'in_progress' | 'completed') {
@@ -115,6 +127,9 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
       setReviewError(null)
       if (submissionResult.status === 'passed') {
         await updateProgress('completed')
+        if (isLastLesson) {
+          setShowSummaryModal(true)
+        }
       }
     } catch {
       setRunError('ネットワークエラーが発生しました')
@@ -152,8 +167,71 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
   const failedCases = result?.test_result.filter((r) => !r.passed) ?? []
   const canReview = result !== null && (reviewCount === null || reviewCount.remaining > 0)
 
+  function passedMessage(count: number) {
+    return count === 1 ? 'テストに合格しました!' : `全${count}個のテストに合格しました!`
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Levelサマリーモーダル */}
+      {showSummaryModal && levelSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+                <h2 className="text-xl font-bold text-green-800">Levelクリア!</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSummaryModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                aria-label="閉じる"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">学んだこと</p>
+              <ul className="space-y-1.5">
+                {levelSummary.concepts.map((concept) => (
+                  <li key={concept} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="mt-1 shrink-0 w-1.5 h-1.5 rounded-full bg-green-400" />
+                    {concept}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">実装したこと</p>
+              <p className="text-sm text-gray-700">{levelSummary.built}</p>
+            </div>
+
+            {levelSummary.nextPreview && (
+              <div className="mb-5 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">次のLevel</p>
+                <p className="text-sm text-gray-700">{levelSummary.nextPreview}</p>
+              </div>
+            )}
+
+            <Link
+              href={levelUrl}
+              className="inline-flex items-center justify-center w-full gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              Lesson一覧へ
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* 左側：教材エリア */}
       <div className="w-2/5 flex flex-col border-r border-gray-200 bg-white overflow-hidden">
         <div className="shrink-0 px-6 py-4 border-b border-gray-100">
@@ -277,10 +355,10 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
                   <div>
                     <p className="text-sm font-bold text-green-700">合格!</p>
                     <p className="text-xs text-green-600 mt-0.5">
-                      全 {result.test_result.length} テストをクリアしました
+                      {passedMessage(result.test_result.length)}
                     </p>
                   </div>
-                  {nextLessonId ? (
+                  {!isLastLesson ? (
                     <Link
                       href={`/lessons/${nextLessonId}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors"
@@ -292,10 +370,10 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
                     </Link>
                   ) : (
                     <Link
-                      href="/courses"
+                      href={levelUrl}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors"
                     >
-                      コース一覧へ
+                      Levelクリア！一覧へ
                     </Link>
                   )}
                 </div>
