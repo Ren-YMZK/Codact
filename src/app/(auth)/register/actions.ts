@@ -7,7 +7,11 @@ import { createClient } from '@/lib/supabase/server'
 export type RegisterState = { error: string } | undefined
 
 function toJapaneseError(message: string): string {
-  if (message.includes('already registered') || message.includes('already exists')) {
+  if (
+    message.includes('user_already_exists') ||
+    message.includes('already registered') ||
+    message.includes('already exists')
+  ) {
     return 'このメールアドレスはすでに登録されています'
   }
   if (message.includes('Password should be at least')) {
@@ -31,6 +35,7 @@ export async function register(
   const { data, error } = await supabase.auth.signUp({ email, password })
 
   if (error) {
+    console.error('signUpError:', error)
     return { error: toJapaneseError(error.message) }
   }
 
@@ -45,9 +50,10 @@ export async function register(
   )
   const { error: insertError } = await admin
     .from('users')
-    .insert({ id: data.user.id, email, name, has_seen_welcome: false })
+    .insert({ id: data.user.id, email, name })
 
   if (insertError) {
+    console.error('insertError:', JSON.stringify(insertError), 'email:', email)
     return { error: 'プロフィールの保存に失敗しました。もう一度お試しください' }
   }
 
