@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { executePython } from '@/lib/piston'
-import { testCases } from '@/lib/testCases'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -19,9 +18,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'lesson_id と code は必須です' }, { status: 400 })
   }
 
-  const cases = testCases[lesson_id]
+  const { data: cases, error: casesError } = await supabase
+    .from('test_cases')
+    .select('input, expected')
+    .eq('lesson_id', lesson_id)
+    .order('order')
+
+  if (casesError) {
+    return NextResponse.json({ error: casesError.message }, { status: 500 })
+  }
+
   if (!cases || cases.length === 0) {
-    return NextResponse.json({ error: 'このLessonのテストケースが見つかりません' }, { status: 404 })
+    return NextResponse.json({ error: 'このLessonにはテストケースが設定されていません' }, { status: 404 })
   }
 
   // 全テストケースを並行実行
