@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { markWelcomeSeen } from './actions'
 
 const features = [
   {
@@ -70,12 +70,14 @@ export default function WelcomePage() {
         </div>
 
         {/* CTAボタン */}
-        <Link
-          href="/courses"
-          className="mt-8 inline-block w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-colors"
-        >
-          さっそく始める
-        </Link>
+        <form action={markWelcomeSeen} className="mt-8">
+          <button
+            type="submit"
+            className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-colors cursor-pointer"
+          >
+            さっそく始める
+          </button>
+        </form>
       </div>
     </div>
   )

@@ -45,7 +45,7 @@ export async function register(
   )
   const { error: insertError } = await admin
     .from('users')
-    .insert({ id: data.user.id, email, name })
+    .insert({ id: data.user.id, email, name, has_seen_welcome: false })
 
   if (insertError) {
     return { error: 'プロフィールの保存に失敗しました。もう一度お試しください' }

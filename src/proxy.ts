@@ -43,6 +43,26 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ログイン済みユーザーが /welcome にアクセスした場合、既読ならスキップ
+  if (user && pathname === "/welcome") {
+    const { data: userData } = await supabase
+      .from("users")
+      .select("has_seen_welcome")
+      .eq("id", user.id)
+      .single();
+
+    if (userData?.has_seen_welcome) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      const redirectRes = NextResponse.redirect(url);
+      // セッションcookieを引き継ぐ
+      supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+        redirectRes.cookies.set(name, value);
+      });
+      return redirectRes;
+    }
+  }
+
   return supabaseResponse;
 }
 
