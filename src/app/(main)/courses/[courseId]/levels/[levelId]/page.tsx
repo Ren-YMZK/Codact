@@ -3,6 +3,21 @@ import { createClient } from '@/lib/supabase/server'
 
 type Status = 'not_started' | 'in_progress' | 'completed'
 
+interface LevelSummary {
+  concepts: string[]
+  built: string
+  nextPreview: string
+}
+
+// Levelのorderに応じたサマリーデータ（1始まり）
+const LEVEL_SUMMARIES: Record<number, LevelSummary> = {
+  1: {
+    concepts: ['リスト（list）の作り方と使い方', 'for ループによる繰り返し処理', 'print() による出力'],
+    built: 'リストに格納した社員名を順番に出力するプログラム',
+    nextPreview: 'if 文を使った条件分岐で、データを絞り込む方法を学びます',
+  },
+}
+
 function StatusIcon({ status }: { status: Status }) {
   if (status === 'completed') {
     return (
@@ -41,10 +56,12 @@ export default async function LevelLessonsPage({
     { data: course },
     { data: level },
     { data: lessons, error },
+    { data: allLevels },
   ] = await Promise.all([
     supabase.from('courses').select('title').eq('id', courseId).single(),
-    supabase.from('levels').select('title').eq('id', levelId).single(),
+    supabase.from('levels').select('id, title, order').eq('id', levelId).single(),
     supabase.from('lessons').select('id, title, order').eq('level_id', levelId).order('order', { ascending: true }),
+    supabase.from('levels').select('id, order').eq('course_id', courseId).order('order', { ascending: true }),
   ])
 
   if (error) {
@@ -74,6 +91,18 @@ export default async function LevelLessonsPage({
       }
     }
   }
+
+  // 全Lesson完了判定
+  const allCompleted =
+    lessons !== null &&
+    lessons.length > 0 &&
+    lessons.every((l) => progressMap.get(l.id) === 'completed')
+
+  // このLevelの表示番号と次のLevel
+  const levelIndex = allLevels?.findIndex((l) => l.id === levelId) ?? -1
+  const levelNumber = levelIndex + 1
+  const nextLevel = levelIndex >= 0 ? (allLevels?.[levelIndex + 1] ?? null) : null
+  const summary = LEVEL_SUMMARIES[level?.order ?? levelNumber] ?? null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -119,6 +148,71 @@ export default async function LevelLessonsPage({
                 </Link>
               )
             })}
+          </div>
+        )}
+
+        {/* Levelサマリー（全Lesson完了時） */}
+        {allCompleted && summary && (
+          <div className="mt-10 rounded-2xl border border-green-200 bg-green-50 px-6 py-7">
+            {/* タイトル */}
+            <div className="flex items-center gap-3 mb-6">
+              <span className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <h2 className="text-xl font-bold text-green-800">Level {levelNumber} クリア!</h2>
+            </div>
+
+            {/* 学んだこと */}
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">学んだこと</p>
+              <ul className="space-y-1.5">
+                {summary.concepts.map((concept) => (
+                  <li key={concept} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="mt-1 shrink-0 w-1.5 h-1.5 rounded-full bg-green-400" />
+                    {concept}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 実装したこと */}
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">実装したこと</p>
+              <p className="text-sm text-gray-700">{summary.built}</p>
+            </div>
+
+            {/* 次のLevelの予告 */}
+            {nextLevel && (
+              <div className="mb-6 px-4 py-3 bg-white border border-green-200 rounded-xl">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">次のLevel</p>
+                <p className="text-sm text-gray-700">{summary.nextPreview}</p>
+              </div>
+            )}
+
+            {/* 次へ進むボタン */}
+            {nextLevel ? (
+              <Link
+                href={`/courses/${courseId}/levels/${nextLevel.id}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                次のLevelへ
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            ) : (
+              <Link
+                href="/courses"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                コース一覧へ
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            )}
           </div>
         )}
       </div>
