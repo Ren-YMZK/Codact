@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { addLesson, deleteLesson, addTestCase, deleteTestCase } from './actions'
+import { addLesson, addTestCase } from './actions'
+import { LessonRow } from './LessonRow'
+import { TestCaseRow } from './TestCaseRow'
 
 export default async function AdminLevelPage({
   params,
@@ -14,13 +16,12 @@ export default async function AdminLevelPage({
   const [{ data: course }, { data: level }, { data: lessons }, { data: testCases }] = await Promise.all([
     admin.from('courses').select('id, title').eq('id', courseId).single(),
     admin.from('levels').select('id, title').eq('id', levelId).single(),
-    admin.from('lessons').select('id, title, order').eq('level_id', levelId).order('order', { ascending: true }),
+    admin.from('lessons').select('id, title, content, initial_code, hint, order').eq('level_id', levelId).order('order', { ascending: true }),
     admin.from('test_cases').select('id, lesson_id, input, expected, order').order('order', { ascending: true }),
   ])
 
   if (!course || !level) notFound()
 
-  // このLevelのLessonに属するテストケースのみ絞り込む
   const lessonIds = new Set(lessons?.map((l) => l.id) ?? [])
   const filteredTestCases = testCases?.filter((tc) => lessonIds.has(tc.lesson_id)) ?? []
 
@@ -49,24 +50,7 @@ export default async function AdminLevelPage({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {lessons?.map((lesson) => (
-              <tr key={lesson.id}>
-                <td className="px-4 py-3 text-gray-500 w-16">{lesson.order}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">{lesson.title}</td>
-                <td className="px-4 py-3 text-right">
-                  <form action={deleteLesson}>
-                    <input type="hidden" name="id" value={lesson.id} />
-                    <input type="hidden" name="courseId" value={courseId} />
-                    <input type="hidden" name="levelId" value={levelId} />
-                    <button
-                      type="submit"
-                      className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer"
-
-                    >
-                      削除
-                    </button>
-                  </form>
-                </td>
-              </tr>
+              <LessonRow key={lesson.id} lesson={lesson} courseId={courseId} levelId={levelId} />
             ))}
             {(!lessons || lessons.length === 0) && (
               <tr>
@@ -85,43 +69,26 @@ export default async function AdminLevelPage({
           <input type="hidden" name="levelId" value={levelId} />
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">タイトル *</label>
-            <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">コンテンツ（Markdown） *</label>
-            <textarea
-              name="content"
-              required
-              rows={8}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
-            />
+            <textarea name="content" required rows={8} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono text-gray-900" />
           </div>
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">初期コード *</label>
-            <textarea
-              name="initial_code"
-              required
-              rows={4}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
-            />
+            <textarea name="initial_code" required rows={4} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono text-gray-900" />
           </div>
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">ヒント</label>
-            <textarea
-              name="hint"
-              rows={2}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            />
+            <textarea name="hint" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
-            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="flex items-end">
-            <button
-              type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer"
-            >
+            <button type="submit" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer">
               追加
             </button>
           </div>
@@ -147,30 +114,7 @@ export default async function AdminLevelPage({
             {filteredTestCases.map((tc) => {
               const lessonTitle = lessons?.find((l) => l.id === tc.lesson_id)?.title ?? '-'
               return (
-                <tr key={tc.id}>
-                  <td className="px-4 py-3 text-gray-500 w-16">{tc.order}</td>
-                  <td className="px-4 py-3 text-gray-700">{lessonTitle}</td>
-                  <td className="px-4 py-2 max-w-xs">
-                    <pre className="text-xs text-gray-600 whitespace-pre-wrap">{tc.input || '（なし）'}</pre>
-                  </td>
-                  <td className="px-4 py-2 max-w-xs">
-                    <pre className="text-xs text-gray-600 whitespace-pre-wrap">{tc.expected}</pre>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <form action={deleteTestCase}>
-                      <input type="hidden" name="id" value={tc.id} />
-                      <input type="hidden" name="courseId" value={courseId} />
-                      <input type="hidden" name="levelId" value={levelId} />
-                      <button
-                        type="submit"
-                        className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer"
-  
-                      >
-                        削除
-                      </button>
-                    </form>
-                  </td>
-                </tr>
+                <TestCaseRow key={tc.id} tc={tc} lessonTitle={lessonTitle} courseId={courseId} levelId={levelId} />
               )
             })}
             {filteredTestCases.length === 0 && (
@@ -190,7 +134,7 @@ export default async function AdminLevelPage({
           <input type="hidden" name="levelId" value={levelId} />
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">Lesson *</label>
-            <select name="lesson_id" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <select name="lesson_id" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900">
               <option value="">選択してください</option>
               {lessons?.map((l) => (
                 <option key={l.id} value={l.id}>{l.title}</option>
@@ -199,31 +143,18 @@ export default async function AdminLevelPage({
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">input（stdin）</label>
-            <textarea
-              name="input"
-              rows={3}
-              placeholder="入力がない場合は空欄"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
-            />
+            <textarea name="input" rows={3} placeholder="入力がない場合は空欄" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono text-gray-900" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">expected（期待する出力） *</label>
-            <textarea
-              name="expected"
-              required
-              rows={3}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
-            />
+            <textarea name="expected" required rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono text-gray-900" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
-            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="flex items-end">
-            <button
-              type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer"
-            >
+            <button type="submit" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer">
               追加
             </button>
           </div>

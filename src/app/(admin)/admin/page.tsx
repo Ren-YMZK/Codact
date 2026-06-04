@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { addCourse, deleteCourse } from './courses/actions'
+import { addCourse } from './courses/actions'
+import { CourseCard } from './CourseCard'
 
 export default async function AdminPage() {
   const admin = createAdminClient()
@@ -19,36 +19,7 @@ export default async function AdminPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {courses.map((course) => (
-            <div key={course.id} className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col gap-3">
-              <Link
-                href={`/admin/courses/${course.id}`}
-                className="flex-1 hover:opacity-80 transition-opacity"
-              >
-                <p className="font-semibold text-gray-900">{course.title}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{course.language}</p>
-                {course.description && (
-                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">{course.description}</p>
-                )}
-                <p className="text-xs text-gray-300 mt-1">order: {course.order}</p>
-              </Link>
-              <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                <Link
-                  href={`/admin/courses/${course.id}`}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Level管理 →
-                </Link>
-                <form action={deleteCourse}>
-                  <input type="hidden" name="id" value={course.id} />
-                  <button
-                    type="submit"
-                    className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer"
-                  >
-                    削除
-                  </button>
-                </form>
-              </div>
-            </div>
+            <CourseCard key={course.id} course={course} />
           ))}
         </div>
       )}
@@ -59,19 +30,19 @@ export default async function AdminPage() {
         <form action={addCourse} className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">タイトル *</label>
-            <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">言語 *</label>
-            <input name="language" required placeholder="python" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="language" required placeholder="python" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
-            <input name="description" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="description" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
-            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="flex items-end">
             <button

@@ -26,6 +26,19 @@ export async function addCourse(formData: FormData) {
   revalidatePath('/admin')
 }
 
+export async function updateCourse(formData: FormData) {
+  await assertAdmin()
+  const admin = createAdminClient()
+  const description = (formData.get('description') as string).trim()
+  await admin.from('courses').update({
+    title: formData.get('title') as string,
+    language: formData.get('language') as string,
+    description: description || null,
+    order: Number(formData.get('order')) || 0,
+  }).eq('id', formData.get('id') as string)
+  revalidatePath('/admin')
+}
+
 export async function deleteCourse(formData: FormData) {
   await assertAdmin()
   const admin = createAdminClient()

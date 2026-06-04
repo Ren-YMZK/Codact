@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { addLevel, deleteLevel } from './actions'
+import { addLevel } from './actions'
+import { LevelRow } from './LevelRow'
 
 export default async function AdminCoursePage({
   params,
@@ -41,36 +42,7 @@ export default async function AdminCoursePage({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {levels?.map((level) => (
-              <tr key={level.id}>
-                <td className="px-4 py-3 text-gray-500 w-16">{level.order}</td>
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/admin/courses/${courseId}/levels/${level.id}`}
-                    className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                  >
-                    {level.title}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 flex items-center justify-end gap-4">
-                  <Link
-                    href={`/admin/courses/${courseId}/levels/${level.id}`}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Lesson管理 →
-                  </Link>
-                  <form action={deleteLevel}>
-                    <input type="hidden" name="id" value={level.id} />
-                    <input type="hidden" name="courseId" value={courseId} />
-                    <button
-                      type="submit"
-                      className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer"
-
-                    >
-                      削除
-                    </button>
-                  </form>
-                </td>
-              </tr>
+              <LevelRow key={level.id} level={level} courseId={courseId} />
             ))}
             {(!levels || levels.length === 0) && (
               <tr>
@@ -88,11 +60,11 @@ export default async function AdminCoursePage({
           <input type="hidden" name="courseId" value={courseId} />
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">タイトル *</label>
-            <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
-            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="col-span-2">
             <button

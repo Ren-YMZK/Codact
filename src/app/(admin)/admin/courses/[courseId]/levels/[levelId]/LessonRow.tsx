@@ -1,0 +1,83 @@
+'use client'
+
+import { useState } from 'react'
+import { updateLesson, deleteLesson } from './actions'
+
+interface Lesson {
+  id: string
+  title: string
+  content: string
+  initial_code: string
+  hint: string | null
+  order: number
+}
+
+interface Props { lesson: Lesson; courseId: string; levelId: string }
+
+export function LessonRow({ lesson, courseId, levelId }: Props) {
+  const [editing, setEditing] = useState(false)
+
+  return (
+    <>
+      <tr>
+        <td className="px-4 py-3 text-gray-500 w-16">{lesson.order}</td>
+        <td className="px-4 py-3 font-medium text-gray-900">{lesson.title}</td>
+        <td className="px-4 py-3">
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setEditing(!editing)}
+              className="text-xs text-gray-500 hover:text-gray-700 font-medium cursor-pointer"
+            >
+              {editing ? 'キャンセル' : '編集'}
+            </button>
+            <form action={deleteLesson}>
+              <input type="hidden" name="id" value={lesson.id} />
+              <input type="hidden" name="courseId" value={courseId} />
+              <input type="hidden" name="levelId" value={levelId} />
+              <button type="submit" className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer">削除</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {editing && (
+        <tr className="bg-blue-50">
+          <td colSpan={3} className="px-4 py-4">
+            <form
+              action={async (fd) => { await updateLesson(fd); setEditing(false) }}
+              className="grid grid-cols-2 gap-3"
+            >
+              <input type="hidden" name="id" value={lesson.id} />
+              <input type="hidden" name="courseId" value={courseId} />
+              <input type="hidden" name="levelId" value={levelId} />
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">タイトル *</label>
+                <input name="title" required defaultValue={lesson.title} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">コンテンツ（Markdown） *</label>
+                <textarea name="content" required rows={8} defaultValue={lesson.content} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono text-gray-900" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">初期コード *</label>
+                <textarea name="initial_code" required rows={4} defaultValue={lesson.initial_code} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono text-gray-900" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-600 mb-1">ヒント</label>
+                <textarea name="hint" rows={2} defaultValue={lesson.hint ?? ''} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
+                <input name="order" type="number" defaultValue={lesson.order} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+              </div>
+              <div className="flex items-end gap-2">
+                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer">保存</button>
+                <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer">キャンセル</button>
+              </div>
+            </form>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}

@@ -34,6 +34,22 @@ export async function addLesson(formData: FormData) {
   revalidatePath(levelPath(courseId, levelId))
 }
 
+export async function updateLesson(formData: FormData) {
+  await assertAdmin()
+  const courseId = formData.get('courseId') as string
+  const levelId = formData.get('levelId') as string
+  const hint = (formData.get('hint') as string).trim()
+  const admin = createAdminClient()
+  await admin.from('lessons').update({
+    title: formData.get('title') as string,
+    content: formData.get('content') as string,
+    initial_code: formData.get('initial_code') as string,
+    hint: hint || null,
+    order: Number(formData.get('order')) || 0,
+  }).eq('id', formData.get('id') as string)
+  revalidatePath(levelPath(courseId, levelId))
+}
+
 export async function deleteLesson(formData: FormData) {
   await assertAdmin()
   const courseId = formData.get('courseId') as string
@@ -54,6 +70,19 @@ export async function addTestCase(formData: FormData) {
     expected: formData.get('expected') as string,
     order: Number(formData.get('order')) || 0,
   })
+  revalidatePath(levelPath(courseId, levelId))
+}
+
+export async function updateTestCase(formData: FormData) {
+  await assertAdmin()
+  const courseId = formData.get('courseId') as string
+  const levelId = formData.get('levelId') as string
+  const admin = createAdminClient()
+  await admin.from('test_cases').update({
+    input: formData.get('input') as string,
+    expected: formData.get('expected') as string,
+    order: Number(formData.get('order')) || 0,
+  }).eq('id', formData.get('id') as string)
   revalidatePath(levelPath(courseId, levelId))
 }
 
