@@ -273,7 +273,7 @@ export default function LessonClient({
       {/* 右側 */}
       <div className="w-3/5 flex flex-col bg-gray-50 overflow-hidden">
         {/* エディタエリア */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="h-[60%] flex flex-col overflow-hidden">
           <div className="shrink-0 flex items-center px-4 py-2 bg-[#1e1e1e] border-b border-gray-700">
             <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Python</span>
           </div>
@@ -283,7 +283,7 @@ export default function LessonClient({
         </div>
 
         {/* 結果エリア */}
-        <div className="shrink-0 border-t border-gray-200 bg-white px-5 py-4 flex flex-col gap-3 max-h-64 overflow-y-auto">
+        <div className="h-[40%] border-t border-gray-200 bg-white px-5 py-4 flex flex-col gap-3 overflow-y-auto">
           {/* ボタン行 */}
           <div className="flex items-center gap-3 flex-wrap">
             <button
