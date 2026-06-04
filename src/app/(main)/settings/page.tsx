@@ -1,0 +1,93 @@
+import { createClient } from '@/lib/supabase/server'
+import { logout } from '@/app/(auth)/logout/actions'
+
+const PLAN_LABELS: Record<string, string> = {
+  free: '無料プラン',
+  paid: '有料プラン',
+}
+
+export default async function SettingsPage() {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: userData } = user
+    ? await supabase
+        .from('users')
+        .select('name, email, plan')
+        .eq('id', user.id)
+        .single()
+    : { data: null }
+
+  const displayName = userData?.name ?? user?.user_metadata?.full_name ?? '—'
+  const email = userData?.email ?? user?.email ?? '—'
+  const plan = userData?.plan ?? 'free'
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-xl mx-auto px-4 py-12">
+        <h1 className="text-2xl font-bold text-gray-900 mb-8">設定</h1>
+
+        {/* プロフィールセクション */}
+        <section className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700">プロフィール</h2>
+          </div>
+          <div className="px-6 py-5 space-y-4">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">表示名</p>
+              <p className="text-sm font-medium text-gray-900">{displayName}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">メールアドレス</p>
+              <p className="text-sm font-medium text-gray-900">{email}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* プランセクション */}
+        <section className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700">プラン</h2>
+          </div>
+          <div className="px-6 py-5 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-900">{PLAN_LABELS[plan] ?? plan}</p>
+              {plan === 'free' && (
+                <p className="text-xs text-gray-400 mt-0.5">AIレビュー 月3回まで</p>
+              )}
+              {plan === 'paid' && (
+                <p className="text-xs text-gray-400 mt-0.5">AIレビュー 月30回まで</p>
+              )}
+            </div>
+            {plan === 'free' && (
+              <a
+                href="/pricing"
+                className="px-3 py-1.5 text-xs font-semibold text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                アップグレード
+              </a>
+            )}
+          </div>
+        </section>
+
+        {/* ログアウトセクション */}
+        <section className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700">アカウント</h2>
+          </div>
+          <div className="px-6 py-5">
+            <form action={logout}>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+              >
+                ログアウト
+              </button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
