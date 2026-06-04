@@ -85,10 +85,19 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
   // 初回マウント時に残り回数を取得
   useEffect(() => { fetchReviewCount() }, [])
 
+  async function updateProgress(status: 'in_progress' | 'completed') {
+    await fetch(`/api/progress/${lesson.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    }).catch(() => { /* 進捗更新の失敗はサイレントに無視 */ })
+  }
+
   async function runTest() {
     setIsRunning(true)
     setResult(null)
     setRunError(null)
+    await updateProgress('in_progress')
     try {
       const res = await fetch('/api/submissions', {
         method: 'POST',
@@ -100,9 +109,13 @@ export default function LessonClient({ lesson, nextLessonId }: LessonClientProps
         setRunError(data.error ?? 'テストの実行に失敗しました')
         return
       }
-      setResult({ id: data.submission.id, status: data.submission.status, test_result: data.test_result })
+      const submissionResult = { id: data.submission.id, status: data.submission.status, test_result: data.test_result }
+      setResult(submissionResult)
       setReviewText(null)
       setReviewError(null)
+      if (submissionResult.status === 'passed') {
+        await updateProgress('completed')
+      }
     } catch {
       setRunError('ネットワークエラーが発生しました')
     } finally {

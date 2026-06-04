@@ -35,6 +35,8 @@ export default async function LevelLessonsPage({
   const { courseId, levelId } = await params
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   const [
     { data: course },
     { data: level },
@@ -42,7 +44,7 @@ export default async function LevelLessonsPage({
   ] = await Promise.all([
     supabase.from('courses').select('title').eq('id', courseId).single(),
     supabase.from('levels').select('title').eq('id', levelId).single(),
-    supabase.from('lessons').select('*').eq('level_id', levelId).order('order', { ascending: true }),
+    supabase.from('lessons').select('id, title, order').eq('level_id', levelId).order('order', { ascending: true }),
   ])
 
   if (error) {
@@ -54,6 +56,23 @@ export default async function LevelLessonsPage({
         </div>
       </div>
     )
+  }
+
+  // 進捗マップを構築（ログイン済みかつLessonが存在する場合のみ）
+  const progressMap = new Map<string, Status>()
+  if (user && lessons && lessons.length > 0) {
+    const lessonIds = lessons.map((l) => l.id)
+    const { data: progressRows } = await supabase
+      .from('progress')
+      .select('lesson_id, status')
+      .eq('user_id', user.id)
+      .in('lesson_id', lessonIds)
+
+    if (progressRows) {
+      for (const row of progressRows) {
+        progressMap.set(row.lesson_id, row.status as Status)
+      }
+    }
   }
 
   return (
@@ -81,22 +100,25 @@ export default async function LevelLessonsPage({
           </div>
         ) : (
           <div className="mt-8 flex flex-col gap-3">
-            {lessons.map((lesson, index) => (
-              <Link
-                key={lesson.id}
-                href={`/lessons/${lesson.id}`}
-                className="flex items-center gap-4 bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4 hover:border-blue-300 hover:shadow transition-all"
-              >
-                <StatusIcon status="not_started" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-400 mb-0.5">Lesson {index + 1}</p>
-                  <p className="text-sm font-semibold text-gray-900 truncate">{lesson.title}</p>
-                </div>
-                <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            ))}
+            {lessons.map((lesson, index) => {
+              const status: Status = progressMap.get(lesson.id) ?? 'not_started'
+              return (
+                <Link
+                  key={lesson.id}
+                  href={`/lessons/${lesson.id}`}
+                  className="flex items-center gap-4 bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4 hover:border-blue-300 hover:shadow transition-all"
+                >
+                  <StatusIcon status={status} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-400 mb-0.5">Lesson {index + 1}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{lesson.title}</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
