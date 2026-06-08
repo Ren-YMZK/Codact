@@ -5,6 +5,11 @@ export interface LevelSummary {
 }
 
 export const LEVEL_SUMMARIES: Record<number, LevelSummary> = {
+  0: {
+    concepts: ['print()による出力', '変数の作り方と使い方', '文字列（str）', '数値（int・float）', 'コメント（#）', 'f-stringによる文字列の組み立て'],
+    built: '変数・文字列・数値・f-stringを使った社員の自己紹介プログラム',
+    nextPreview: 'リスト（list）とfor文を使って、社員の名前を一覧表示する機能を作ります',
+  },
   1: {
     concepts: ['print()による出力', 'リスト（list）の作り方と使い方', 'インデックスによる要素の取り出し', 'for文による繰り返し処理'],
     built: '社員リストを作成し、全員の名前を一覧表示するプログラム',
