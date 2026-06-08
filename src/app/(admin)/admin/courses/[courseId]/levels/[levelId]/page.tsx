@@ -90,11 +90,7 @@ export default async function AdminLevelPage({
             <label className="block text-xs font-medium text-gray-600 mb-1">ヒント</label>
             <textarea name="hint" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
-            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
-          </div>
-          <div className="flex items-end">
+          <div className="col-span-2">
             <button type="submit" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer">
               追加
             </button>
@@ -156,11 +152,7 @@ export default async function AdminLevelPage({
             <label className="block text-xs font-medium text-gray-600 mb-1">expected（期待する出力） *</label>
             <textarea name="expected" required rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono text-gray-900" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
-            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
-          </div>
-          <div className="flex items-end">
+          <div className="col-span-2">
             <button type="submit" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer">
               追加
             </button>

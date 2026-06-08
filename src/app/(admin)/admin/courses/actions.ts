@@ -17,11 +17,13 @@ export async function addCourse(formData: FormData) {
   await assertAdmin()
   const admin = createAdminClient()
   const description = (formData.get('description') as string).trim()
+  const { data: maxRow } = await admin.from('courses').select('order').order('order', { ascending: false }).limit(1).single()
+  const nextOrder = (maxRow?.order ?? 0) + 1
   await admin.from('courses').insert({
     title: formData.get('title') as string,
     language: formData.get('language') as string,
     description: description || null,
-    order: Number(formData.get('order')) || 0,
+    order: nextOrder,
   })
   revalidatePath('/admin')
 }

@@ -68,10 +68,6 @@ export default async function AdminCoursePage({
             <label className="block text-xs font-medium text-gray-600 mb-1">タイトル *</label>
             <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
-            <input name="order" type="number" defaultValue={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
-          </div>
           <div className="col-span-2">
             <button
               type="submit"

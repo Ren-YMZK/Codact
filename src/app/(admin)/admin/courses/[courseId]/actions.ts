@@ -40,10 +40,12 @@ export async function addLevel(formData: FormData) {
   await assertAdmin()
   const courseId = formData.get('courseId') as string
   const admin = createAdminClient()
+  const { data: maxRow } = await admin.from('levels').select('order').eq('course_id', courseId).order('order', { ascending: false }).limit(1).single()
+  const nextOrder = (maxRow?.order ?? 0) + 1
   await admin.from('levels').insert({
     course_id: courseId,
     title: formData.get('title') as string,
-    order: Number(formData.get('order')) || 0,
+    order: nextOrder,
   })
   revalidatePath(`/admin/courses/${courseId}`)
 }
