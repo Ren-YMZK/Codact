@@ -13,6 +13,29 @@ async function assertAdmin() {
   if (row?.role !== 'admin') redirect('/dashboard')
 }
 
+export async function moveLevel(formData: FormData) {
+  await assertAdmin()
+  const id = formData.get('id') as string
+  const direction = formData.get('direction') as 'up' | 'down'
+  const courseId = formData.get('courseId') as string
+  const admin = createAdminClient()
+  const { data: levels } = await admin
+    .from('levels')
+    .select('id, order')
+    .eq('course_id', courseId)
+    .order('order', { ascending: true })
+  if (!levels) return
+  const idx = levels.findIndex((l) => l.id === id)
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= levels.length) return
+  const [a, b] = [levels[idx], levels[swapIdx]]
+  await Promise.all([
+    admin.from('levels').update({ order: b.order }).eq('id', a.id),
+    admin.from('levels').update({ order: a.order }).eq('id', b.id),
+  ])
+  revalidatePath(`/admin/courses/${courseId}`)
+}
+
 export async function addLevel(formData: FormData) {
   await assertAdmin()
   const courseId = formData.get('courseId') as string

@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { updateLevel, deleteLevel } from './actions'
+import { updateLevel, deleteLevel, moveLevel } from './actions'
 
 interface Level { id: string; title: string; order: number }
-interface Props { level: Level; courseId: string }
+interface Props { level: Level; courseId: string; isFirst: boolean; isLast: boolean }
 
-export function LevelRow({ level, courseId }: Props) {
+export function LevelRow({ level, courseId, isFirst, isLast }: Props) {
   const [editing, setEditing] = useState(false)
 
   if (editing) {
@@ -48,7 +48,35 @@ export function LevelRow({ level, courseId }: Props) {
         </Link>
       </td>
       <td className="px-4 py-3">
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex items-center justify-end gap-2">
+          {/* 順番変更ボタン */}
+          <form action={moveLevel}>
+            <input type="hidden" name="id" value={level.id} />
+            <input type="hidden" name="direction" value="up" />
+            <input type="hidden" name="courseId" value={courseId} />
+            <button
+              type="submit"
+              disabled={isFirst}
+              className="text-gray-400 hover:text-gray-700 disabled:text-gray-200 disabled:cursor-not-allowed cursor-pointer"
+              aria-label="上へ"
+            >
+              ↑
+            </button>
+          </form>
+          <form action={moveLevel}>
+            <input type="hidden" name="id" value={level.id} />
+            <input type="hidden" name="direction" value="down" />
+            <input type="hidden" name="courseId" value={courseId} />
+            <button
+              type="submit"
+              disabled={isLast}
+              className="text-gray-400 hover:text-gray-700 disabled:text-gray-200 disabled:cursor-not-allowed cursor-pointer"
+              aria-label="下へ"
+            >
+              ↓
+            </button>
+          </form>
+          <span className="text-gray-200">|</span>
           <Link href={`/admin/courses/${courseId}/levels/${level.id}`} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
             Lesson管理 →
           </Link>

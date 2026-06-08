@@ -49,8 +49,15 @@ export default async function AdminLevelPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {lessons?.map((lesson) => (
-              <LessonRow key={lesson.id} lesson={lesson} courseId={courseId} levelId={levelId} />
+            {lessons?.map((lesson, index) => (
+              <LessonRow
+                key={lesson.id}
+                lesson={lesson}
+                courseId={courseId}
+                levelId={levelId}
+                isFirst={index === 0}
+                isLast={index === (lessons.length - 1)}
+              />
             ))}
             {(!lessons || lessons.length === 0) && (
               <tr>

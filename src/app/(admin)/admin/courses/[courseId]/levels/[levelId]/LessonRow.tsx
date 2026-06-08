@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { updateLesson, deleteLesson } from './actions'
+import { updateLesson, deleteLesson, moveLesson } from './actions'
 
 interface Lesson {
   id: string
@@ -12,9 +12,15 @@ interface Lesson {
   order: number
 }
 
-interface Props { lesson: Lesson; courseId: string; levelId: string }
+interface Props {
+  lesson: Lesson
+  courseId: string
+  levelId: string
+  isFirst: boolean
+  isLast: boolean
+}
 
-export function LessonRow({ lesson, courseId, levelId }: Props) {
+export function LessonRow({ lesson, courseId, levelId, isFirst, isLast }: Props) {
   const [editing, setEditing] = useState(false)
 
   return (
@@ -23,7 +29,37 @@ export function LessonRow({ lesson, courseId, levelId }: Props) {
         <td className="px-4 py-3 text-gray-500 w-16">{lesson.order}</td>
         <td className="px-4 py-3 font-medium text-gray-900">{lesson.title}</td>
         <td className="px-4 py-3">
-          <div className="flex items-center justify-end gap-3">
+          <div className="flex items-center justify-end gap-2">
+            {/* 順番変更ボタン */}
+            <form action={moveLesson}>
+              <input type="hidden" name="id" value={lesson.id} />
+              <input type="hidden" name="direction" value="up" />
+              <input type="hidden" name="courseId" value={courseId} />
+              <input type="hidden" name="levelId" value={levelId} />
+              <button
+                type="submit"
+                disabled={isFirst}
+                className="text-gray-400 hover:text-gray-700 disabled:text-gray-200 disabled:cursor-not-allowed cursor-pointer"
+                aria-label="上へ"
+              >
+                ↑
+              </button>
+            </form>
+            <form action={moveLesson}>
+              <input type="hidden" name="id" value={lesson.id} />
+              <input type="hidden" name="direction" value="down" />
+              <input type="hidden" name="courseId" value={courseId} />
+              <input type="hidden" name="levelId" value={levelId} />
+              <button
+                type="submit"
+                disabled={isLast}
+                className="text-gray-400 hover:text-gray-700 disabled:text-gray-200 disabled:cursor-not-allowed cursor-pointer"
+                aria-label="下へ"
+              >
+                ↓
+              </button>
+            </form>
+            <span className="text-gray-200">|</span>
             <button
               type="button"
               onClick={() => setEditing(!editing)}

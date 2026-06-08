@@ -17,6 +17,30 @@ function levelPath(courseId: string, levelId: string) {
   return `/admin/courses/${courseId}/levels/${levelId}`
 }
 
+export async function moveLesson(formData: FormData) {
+  await assertAdmin()
+  const id = formData.get('id') as string
+  const direction = formData.get('direction') as 'up' | 'down'
+  const courseId = formData.get('courseId') as string
+  const levelId = formData.get('levelId') as string
+  const admin = createAdminClient()
+  const { data: lessons } = await admin
+    .from('lessons')
+    .select('id, order')
+    .eq('level_id', levelId)
+    .order('order', { ascending: true })
+  if (!lessons) return
+  const idx = lessons.findIndex((l) => l.id === id)
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= lessons.length) return
+  const [a, b] = [lessons[idx], lessons[swapIdx]]
+  await Promise.all([
+    admin.from('lessons').update({ order: b.order }).eq('id', a.id),
+    admin.from('lessons').update({ order: a.order }).eq('id', b.id),
+  ])
+  revalidatePath(levelPath(courseId, levelId))
+}
+
 export async function addLesson(formData: FormData) {
   await assertAdmin()
   const courseId = formData.get('courseId') as string
