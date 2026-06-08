@@ -14,7 +14,7 @@ export default async function AdminCoursePage({
 
   const [{ data: course }, { data: levels }] = await Promise.all([
     admin.from('courses').select('id, title').eq('id', courseId).single(),
-    admin.from('levels').select('id, title, order').eq('course_id', courseId).order('order', { ascending: true }),
+    admin.from('levels').select('id, title, order, concepts').eq('course_id', courseId).order('order', { ascending: true }),
   ])
 
   if (!course) notFound()
@@ -67,6 +67,14 @@ export default async function AdminCoursePage({
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">タイトル *</label>
             <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">学習概念（カンマ区切り）</label>
+            <input
+              name="concepts"
+              placeholder="print()による出力, リストの作り方, for文"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+            />
           </div>
           <div className="col-span-2">
             <button

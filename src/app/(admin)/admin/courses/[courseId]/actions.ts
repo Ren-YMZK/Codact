@@ -5,6 +5,11 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+function parseConcepts(raw: FormDataEntryValue | null): string[] {
+  if (!raw) return []
+  return (raw as string).split(',').map((s) => s.trim()).filter(Boolean)
+}
+
 async function assertAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -45,6 +50,7 @@ export async function addLevel(formData: FormData) {
   await admin.from('levels').insert({
     course_id: courseId,
     title: formData.get('title') as string,
+    concepts: parseConcepts(formData.get('concepts')),
     order: nextOrder,
   })
   revalidatePath(`/admin/courses/${courseId}`)
@@ -56,6 +62,7 @@ export async function updateLevel(formData: FormData) {
   const admin = createAdminClient()
   await admin.from('levels').update({
     title: formData.get('title') as string,
+    concepts: parseConcepts(formData.get('concepts')),
     order: Number(formData.get('order')) || 0,
   }).eq('id', formData.get('id') as string)
   revalidatePath(`/admin/courses/${courseId}`)

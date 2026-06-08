@@ -18,6 +18,13 @@ const PROMPT_FAILED = `あなたはプログラミング学習サービスのメ
 - ヒントは次の一手がわかる程度にとどめる
 - 出力は5〜10行程度にする
 
+# 学習済みの概念
+{learned_concepts}
+
+# 制約
+- 学習済みの概念の範囲内でのみアドバイスする
+- まだ学んでいない概念・構文は使わない
+
 # 問題文
 {problem}
 
@@ -48,6 +55,13 @@ const PROMPT_PASSED = `あなたはプログラミング学習サービスのメ
 - ビックリマークは積極的に使う
 - 絵文字は使わない
 - 出力は3〜7行程度にする
+
+# 学習済みの概念
+{learned_concepts}
+
+# 制約
+- 学習済みの概念の範囲内でのみアドバイスする
+- まだ学んでいない概念・構文は使わない
 
 # 問題文
 {problem}
@@ -120,15 +134,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '提出情報の取得に失敗しました' }, { status: 404 })
   }
 
-  // Lesson情報取得
+  // Lesson情報取得（level_id も含む）
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
-    .select('content')
+    .select('content, level_id')
     .eq('id', submission.lesson_id)
     .single()
 
   if (lessonError || !lesson) {
     return NextResponse.json({ error: 'Lesson情報の取得に失敗しました' }, { status: 404 })
+  }
+
+  // Level情報取得（order・course_id）
+  const { data: level } = await supabase
+    .from('levels')
+    .select('order, course_id')
+    .eq('id', lesson.level_id)
+    .single()
+
+  // 学習済み概念を取得（同コース内の現在Level以下の全concepts）
+  let learnedConcepts = '（概念情報なし）'
+  if (level) {
+    const { data: conceptLevels } = await supabase
+      .from('levels')
+      .select('concepts')
+      .eq('course_id', level.course_id)
+      .lte('order', level.order)
+    const allConcepts = (conceptLevels ?? []).flatMap((l) => l.concepts ?? [])
+    if (allConcepts.length > 0) {
+      learnedConcepts = allConcepts.join('、')
+    }
   }
 
   // プロンプト選択・組み立て
@@ -139,9 +174,11 @@ export async function POST(request: NextRequest) {
 
   const prompt = isPassed
     ? PROMPT_PASSED
+        .replace('{learned_concepts}', learnedConcepts)
         .replace('{problem}', lesson.content)
         .replace('{code}', submission.code)
     : PROMPT_FAILED
+        .replace('{learned_concepts}', learnedConcepts)
         .replace('{problem}', lesson.content)
         .replace('{test_result}', testResultText)
         .replace('{code}', submission.code)
