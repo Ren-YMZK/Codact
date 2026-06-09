@@ -40,25 +40,35 @@ interface LessonClientProps {
 }
 
 const mdComponents: Components = {
-  p:          ({ children }) => <p className="mb-3 text-sm text-gray-700 leading-relaxed">{children}</p>,
-  h1:         ({ children }) => <h1 className="text-lg font-bold text-gray-900 mt-5 mb-2">{children}</h1>,
-  h2:         ({ children }) => <h2 className="text-base font-bold text-gray-900 mt-4 mb-2">{children}</h2>,
-  h3:         ({ children }) => <h3 className="text-sm font-semibold text-gray-900 mt-3 mb-1">{children}</h3>,
-  ul:         ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>,
-  ol:         ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1">{children}</ol>,
-  li:         ({ children }) => <li className="text-sm text-gray-700">{children}</li>,
+  p:          ({ children }) => <p className="mb-4 text-[15px] text-gray-700 leading-7">{children}</p>,
+  h1:         ({ children }) => <h1 className="text-xl font-bold text-gray-900 mt-6 mb-3">{children}</h1>,
+  h2:         ({ children }) => {
+    const isQuestion = String(children).trim() === '問題'
+    if (isQuestion) {
+      return (
+        <h2 className="text-base font-bold text-amber-800 mt-6 mb-3 px-4 py-2.5 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg">
+          {children}
+        </h2>
+      )
+    }
+    return <h2 className="text-base font-bold text-gray-900 mt-6 mb-2">{children}</h2>
+  },
+  h3:         ({ children }) => <h3 className="text-sm font-semibold text-gray-800 mt-4 mb-1.5">{children}</h3>,
+  ul:         ({ children }) => <ul className="list-disc list-inside mb-4 space-y-1.5">{children}</ul>,
+  ol:         ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-1.5">{children}</ol>,
+  li:         ({ children }) => <li className="text-[15px] text-gray-700 leading-7">{children}</li>,
   strong:     ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
   blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-blue-300 pl-4 italic text-gray-600 my-3">{children}</blockquote>
+    <blockquote className="border-l-4 border-blue-300 pl-4 italic text-gray-600 my-4">{children}</blockquote>
   ),
   pre:        ({ children }) => (
-    <pre className="bg-gray-100 rounded-lg p-3 overflow-x-auto my-3 text-xs font-mono text-gray-800">{children}</pre>
+    <pre className="bg-gray-900 rounded-xl p-4 overflow-x-auto my-4 text-sm font-mono text-gray-100 leading-6">{children}</pre>
   ),
   code:       ({ children, className }) => {
     const isBlock = Boolean(className?.includes('language-'))
     return isBlock
-      ? <code className={`${className ?? ''} text-xs font-mono text-gray-800`}>{children}</code>
-      : <code className="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono text-gray-800">{children}</code>
+      ? <code className={`${className ?? ''} text-sm font-mono text-gray-100`}>{children}</code>
+      : <code className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[13px] font-mono">{children}</code>
   },
 }
 
