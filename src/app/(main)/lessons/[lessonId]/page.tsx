@@ -64,6 +64,7 @@ export default async function LessonPage({
       levelSummary={levelSummary}
       levelUrl={levelUrl}
       initialCode={passedCode ?? lesson.initial_code}
+      passedCode={passedCode}
     />
   )
 }

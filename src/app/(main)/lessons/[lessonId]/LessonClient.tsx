@@ -37,6 +37,7 @@ interface LessonClientProps {
   levelSummary: LevelSummary | null
   levelUrl: string
   initialCode: string
+  passedCode: string | null
 }
 
 const mdComponents: Components = {
@@ -79,6 +80,7 @@ export default function LessonClient({
   levelSummary,
   levelUrl,
   initialCode,
+  passedCode,
 }: LessonClientProps) {
   const [code, setCode] = useState(initialCode)
   const [showHint, setShowHint] = useState(false)
@@ -90,6 +92,7 @@ export default function LessonClient({
   const [reviewText, setReviewText] = useState<string | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
   const [showSummaryModal, setShowSummaryModal] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
 
   const content = lesson.content.replace(/\\n/g, '\n')
 
@@ -106,13 +109,20 @@ export default function LessonClient({
   }
 
   useEffect(() => { fetchReviewCount() }, [])
+  useEffect(() => { if (passedCode) setShowResetModal(true) }, [])
 
-  async function updateProgress(status: 'in_progress' | 'completed') {
+  async function updateProgress(status: 'not_started' | 'in_progress' | 'completed') {
     await fetch(`/api/progress/${lesson.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     }).catch(() => { /* 進捗更新の失敗はサイレントに無視 */ })
+  }
+
+  async function handleReset() {
+    setCode(lesson.initial_code)
+    await updateProgress('not_started')
+    setShowResetModal(false)
   }
 
   async function runTest() {
@@ -183,6 +193,41 @@ export default function LessonClient({
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* リセット確認モーダル */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <h2 className="text-base font-bold text-gray-900">このLessonはクリア済みです</h2>
+            </div>
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+              過去の提出コードを表示しています。やり直す場合はリセットしてください。
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                リセットしてやり直す
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowResetModal(false)}
+                className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                このまま見返す
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Levelサマリーモーダル */}
       {showSummaryModal && levelSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
