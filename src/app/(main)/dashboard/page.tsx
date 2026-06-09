@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase.from('courses').select('id, title, language').order('order', { ascending: true }),
     supabase.from('levels').select('id, course_id'),
-    supabase.from('lessons').select('id, level_id'),
+    supabase.from('lessons').select('id, title, level_id'),
     supabase.from('progress').select('lesson_id, status, completed_at').eq('user_id', user.id),
   ])
 
@@ -54,28 +54,51 @@ export default async function DashboardPage() {
     .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())[0]
   const lastLessonId = inProgressEntry?.lesson_id ?? lastCompletedEntry?.lesson_id
 
+  const lastLesson = lastLessonId
+    ? (lessons ?? []).find(l => l.id === lastLessonId) ?? null
+    : null
+
   const hasCourses = (courses ?? []).length > 0
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-12">
         {/* ヘッダー */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
-            <p className="mt-1 text-sm text-gray-500">学習の進捗を確認しましょう</p>
-          </div>
-          <Link
-            href={lastLessonId ? `/lessons/${lastLessonId}` : '/courses'}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            続きから始める
-          </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
+          <p className="mt-1 text-sm text-gray-500">学習の進捗を確認しましょう</p>
         </div>
+
+        {/* 続きから始めるCTA */}
+        {lastLesson ? (
+          <div className="mt-6 bg-blue-600 rounded-2xl px-6 py-5 flex items-center justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <p className="text-xs text-blue-200 mb-1">次のLesson</p>
+              <p className="text-base font-semibold text-white truncate">{lastLesson.title}</p>
+            </div>
+            <Link
+              href={`/lessons/${lastLesson.id}`}
+              className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-blue-50 text-blue-700 text-sm font-bold rounded-xl transition-colors"
+            >
+              続きから始める
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        ) : hasCourses ? (
+          <div className="mt-6">
+            <Link
+              href="/courses"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors"
+            >
+              コースを始める
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        ) : null}
 
         {/* コース進捗一覧 */}
         {!hasCourses ? (
@@ -96,16 +119,11 @@ export default async function DashboardPage() {
               return (
                 <div key={course.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-5">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base font-semibold text-gray-900">{course.title}</h2>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color.bg} ${color.text}`}>
-                          {course.language}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-xs text-gray-400">
-                        {completed} / {total} Lesson完了
-                      </p>
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <h2 className="text-base font-semibold text-gray-900">{course.title}</h2>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color.bg} ${color.text}`}>
+                        {course.language}
+                      </span>
                     </div>
                     <Link
                       href={`/courses/${course.id}`}
@@ -129,7 +147,10 @@ export default async function DashboardPage() {
                         style={{ width: `${percent}%` }}
                       />
                     </div>
-                    <p className="mt-1.5 text-right text-xs text-gray-400">{percent}%</p>
+                    <div className="mt-1.5 flex items-center justify-between">
+                      <p className="text-xs text-gray-500">{completed} / {total} Lesson完了</p>
+                      <p className="text-xs text-gray-400">{percent}%</p>
+                    </div>
                   </div>
                 </div>
               )
