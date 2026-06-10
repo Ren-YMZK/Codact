@@ -14,7 +14,7 @@ export default async function AdminCoursePage({
 
   const [{ data: course }, { data: levels }] = await Promise.all([
     admin.from('courses').select('id, title').eq('id', courseId).single(),
-    admin.from('levels').select('id, title, order, concepts').eq('course_id', courseId).order('order', { ascending: true }),
+    admin.from('levels').select('id, title, order, concepts, built, next_preview').eq('course_id', courseId).order('order', { ascending: true }),
   ])
 
   if (!course) notFound()
@@ -73,6 +73,22 @@ export default async function AdminCoursePage({
             <input
               name="concepts"
               placeholder="print()による出力, リストの作り方, for文"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">実装したこと</label>
+            <input
+              name="built"
+              placeholder="〇〇機能を実装した"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">次のLevelの予告</label>
+            <input
+              name="next_preview"
+              placeholder="次はXXXを学びます"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900"
             />
           </div>

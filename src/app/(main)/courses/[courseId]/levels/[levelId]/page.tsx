@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { LEVEL_SUMMARIES } from '@/lib/levelSummaries'
 
 type Status = 'not_started' | 'in_progress' | 'completed'
 
@@ -45,7 +44,7 @@ export default async function LevelLessonsPage({
     { data: allLevels },
   ] = await Promise.all([
     supabase.from('courses').select('title').eq('id', courseId).single(),
-    supabase.from('levels').select('id, title, order').eq('id', levelId).single(),
+    supabase.from('levels').select('id, title, order, concepts, built, next_preview').eq('id', levelId).single(),
     supabase.from('lessons').select('id, title, order').eq('level_id', levelId).order('order', { ascending: true }),
     supabase.from('levels').select('id, order').eq('course_id', courseId).order('order', { ascending: true }),
   ])
@@ -88,7 +87,11 @@ export default async function LevelLessonsPage({
   const levelIndex = allLevels?.findIndex((l) => l.id === levelId) ?? -1
   const levelNumber = levelIndex + 1
   const nextLevel = levelIndex >= 0 ? (allLevels?.[levelIndex + 1] ?? null) : null
-  const summary = LEVEL_SUMMARIES[level?.order ?? levelNumber] ?? null
+  const summary = level?.built ? {
+    concepts: (level.concepts as string[] | null) ?? [],
+    built: level.built as string,
+    nextPreview: (level.next_preview as string | null) ?? null,
+  } : null
 
   return (
     <div className="min-h-screen bg-gray-50">

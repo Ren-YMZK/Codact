@@ -5,7 +5,11 @@ import Link from 'next/link'
 import Markdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import CodeEditor from '@/components/editor/CodeEditor'
-import type { LevelSummary } from '@/lib/levelSummaries'
+interface LevelSummary {
+  concepts: string[]
+  built: string
+  nextPreview: string | null
+}
 
 interface Lesson {
   id: string

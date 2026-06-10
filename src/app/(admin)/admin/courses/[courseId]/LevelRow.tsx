@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { updateLevel, deleteLevel, moveLevel } from './actions'
 
-interface Level { id: string; title: string; order: number; concepts: string[] | null }
+interface Level { id: string; title: string; order: number; concepts: string[] | null; built: string | null; next_preview: string | null }
 interface Props { level: Level; courseId: string; isFirst: boolean; isLast: boolean }
 
 export function LevelRow({ level, courseId, isFirst, isLast }: Props) {
@@ -36,6 +36,24 @@ export function LevelRow({ level, courseId, isFirst, isLast }: Props) {
                 name="concepts"
                 defaultValue={level.concepts?.join(', ') ?? ''}
                 placeholder="print()による出力, リストの作り方, for文"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">実装したこと</label>
+              <input
+                name="built"
+                defaultValue={level.built ?? ''}
+                placeholder="〇〇機能を実装した"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">次のLevelの予告</label>
+              <input
+                name="next_preview"
+                defaultValue={level.next_preview ?? ''}
+                placeholder="次はXXXを学びます"
                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900"
               />
             </div>

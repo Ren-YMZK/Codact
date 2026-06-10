@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { LEVEL_SUMMARIES } from '@/lib/levelSummaries'
 import LessonClient from './LessonClient'
 
 export default async function LessonPage({
@@ -27,7 +26,7 @@ export default async function LessonPage({
     { data: level },
     { data: nextLesson },
   ] = await Promise.all([
-    supabase.from('levels').select('id, order, course_id').eq('id', lesson.level_id).single(),
+    supabase.from('levels').select('id, order, course_id, concepts, built, next_preview').eq('id', lesson.level_id).single(),
     supabase
       .from('lessons')
       .select('id')
@@ -39,7 +38,11 @@ export default async function LessonPage({
   ])
 
   const isLastLesson = nextLesson === null
-  const levelSummary = isLastLesson && level ? (LEVEL_SUMMARIES[level.order] ?? null) : null
+  const levelSummary = isLastLesson && level?.built ? {
+    concepts: (level.concepts as string[] | null) ?? [],
+    built: level.built as string,
+    nextPreview: (level.next_preview as string | null) ?? null,
+  } : null
   const levelUrl = level ? `/courses/${level.course_id}/levels/${level.id}` : '/courses'
 
   let passedCode: string | null = null

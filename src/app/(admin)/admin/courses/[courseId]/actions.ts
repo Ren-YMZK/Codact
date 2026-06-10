@@ -47,10 +47,14 @@ export async function addLevel(formData: FormData) {
   const admin = createAdminClient()
   const { data: maxRow } = await admin.from('levels').select('order').eq('course_id', courseId).order('order', { ascending: false }).limit(1).single()
   const nextOrder = (maxRow?.order ?? 0) + 1
+  const built = (formData.get('built') as string).trim()
+  const nextPreview = (formData.get('next_preview') as string).trim()
   await admin.from('levels').insert({
     course_id: courseId,
     title: formData.get('title') as string,
     concepts: parseConcepts(formData.get('concepts')),
+    built: built || null,
+    next_preview: nextPreview || null,
     order: nextOrder,
   })
   revalidatePath(`/admin/courses/${courseId}`)
@@ -60,9 +64,13 @@ export async function updateLevel(formData: FormData) {
   await assertAdmin()
   const courseId = formData.get('courseId') as string
   const admin = createAdminClient()
+  const built = (formData.get('built') as string).trim()
+  const nextPreview = (formData.get('next_preview') as string).trim()
   await admin.from('levels').update({
     title: formData.get('title') as string,
     concepts: parseConcepts(formData.get('concepts')),
+    built: built || null,
+    next_preview: nextPreview || null,
     order: Number(formData.get('order')) || 0,
   }).eq('id', formData.get('id') as string)
   revalidatePath(`/admin/courses/${courseId}`)
