@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/anthropic'
-
-const FREE_LIMIT = 3
-const PAID_LIMIT = 30
+import { getPlanLimit, applyMonthlyResetIfNeeded } from '@/lib/aiReview'
 
 const PROMPT_FAILED = `あなたはプログラミング学習サービスのメンターです。
 プログラミング初心者に対して、コードレビューを行ってください。
@@ -103,21 +101,15 @@ export async function POST(request: NextRequest) {
   }
 
   // 1ヶ月以上経過していたらリセット
-  const resetAt = new Date(userData.ai_review_reset_at)
-  const oneMonthAgo = new Date()
-  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-
-  let count = userData.ai_review_count
-  if (resetAt <= oneMonthAgo) {
-    await supabase
-      .from('users')
-      .update({ ai_review_count: 0, ai_review_reset_at: new Date().toISOString() })
-      .eq('id', user.id)
-    count = 0
-  }
+  const count = await applyMonthlyResetIfNeeded(
+    supabase,
+    user.id,
+    userData.ai_review_count,
+    userData.ai_review_reset_at,
+  )
 
   // 残り回数チェック
-  const limit = userData.plan === 'paid' ? PAID_LIMIT : FREE_LIMIT
+  const limit = getPlanLimit(userData.plan)
   if (count >= limit) {
     return NextResponse.json({ error: 'AIレビューの回数上限に達しました' }, { status: 403 })
   }
