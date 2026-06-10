@@ -22,20 +22,34 @@ export default async function LessonPage({
     notFound()
   }
 
+  const currentOrder = Number(lesson.order)
+
   const [
     { data: level },
-    { data: nextLesson },
+    nextResult,
+    prevResult,
   ] = await Promise.all([
     supabase.from('levels').select('id, order, course_id, concepts, built, next_preview').eq('id', lesson.level_id).single(),
     supabase
       .from('lessons')
       .select('id')
       .eq('level_id', lesson.level_id)
-      .gt('order', lesson.order)
+      .gt('"order"', currentOrder)
       .order('order', { ascending: true })
       .limit(1)
-      .single(),
+      .maybeSingle(),
+    supabase
+      .from('lessons')
+      .select('id')
+      .eq('level_id', lesson.level_id)
+      .lt('"order"', currentOrder)
+      .order('order', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
+
+  const nextLesson = nextResult.data
+  const prevLesson = prevResult.data
 
   const isLastLesson = nextLesson === null
   const levelSummary = isLastLesson && level?.built ? {
@@ -62,6 +76,7 @@ export default async function LessonPage({
   return (
     <LessonClient
       lesson={lesson}
+      prevLessonId={prevLesson?.id ?? null}
       nextLessonId={nextLesson?.id ?? null}
       isLastLesson={isLastLesson}
       levelSummary={levelSummary}

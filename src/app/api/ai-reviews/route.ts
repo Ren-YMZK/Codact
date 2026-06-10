@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
       .from('levels')
       .select('concepts')
       .eq('course_id', level.course_id)
-      .lte('order', level.order)
+      .lte('"order"', level.order)
     const allConcepts = (conceptLevels ?? []).flatMap((l) => l.concepts ?? [])
     if (allConcepts.length > 0) {
       learnedConcepts = allConcepts.join('、')
