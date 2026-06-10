@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { updateLesson, deleteLesson, moveLesson } from './actions'
+import { DeleteButton } from '../../../../DeleteButton'
 
 interface Lesson {
   id: string
@@ -67,12 +68,11 @@ export function LessonRow({ lesson, courseId, levelId, isFirst, isLast }: Props)
             >
               {editing ? 'キャンセル' : '編集'}
             </button>
-            <form action={deleteLesson}>
-              <input type="hidden" name="id" value={lesson.id} />
-              <input type="hidden" name="courseId" value={courseId} />
-              <input type="hidden" name="levelId" value={levelId} />
-              <button type="submit" className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer">削除</button>
-            </form>
+            <DeleteButton
+              action={deleteLesson}
+              hiddenFields={{ id: lesson.id, courseId, levelId }}
+              confirmMessage={`Lesson「${lesson.title}」を削除しますか?`}
+            />
           </div>
         </td>
       </tr>

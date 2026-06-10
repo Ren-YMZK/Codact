@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { updateLevel, deleteLevel, moveLevel } from './actions'
+import { DeleteButton } from '../../DeleteButton'
 
 interface Level { id: string; title: string; order: number; concepts: string[] | null; built: string | null; next_preview: string | null }
 interface Props { level: Level; courseId: string; isFirst: boolean; isLast: boolean }
@@ -102,11 +103,11 @@ export function LevelRow({ level, courseId, isFirst, isLast }: Props) {
           <button type="button" onClick={() => setEditing(true)} className="text-xs text-gray-500 hover:text-gray-700 font-medium cursor-pointer">
             編集
           </button>
-          <form action={deleteLevel}>
-            <input type="hidden" name="id" value={level.id} />
-            <input type="hidden" name="courseId" value={courseId} />
-            <button type="submit" className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer">削除</button>
-          </form>
+          <DeleteButton
+            action={deleteLevel}
+            hiddenFields={{ id: level.id, courseId }}
+            confirmMessage={`Level「${level.title}」を削除しますか?配下のLessonも削除されます`}
+          />
         </div>
       </td>
     </tr>

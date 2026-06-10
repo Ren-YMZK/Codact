@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { updateCourse, deleteCourse } from './courses/actions'
+import { DeleteButton } from './DeleteButton'
 
 interface Course {
   id: string
@@ -71,12 +72,11 @@ export function CourseCard({ course }: { course: Course }) {
           >
             編集
           </button>
-          <form action={deleteCourse}>
-            <input type="hidden" name="id" value={course.id} />
-            <button type="submit" className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer">
-              削除
-            </button>
-          </form>
+          <DeleteButton
+            action={deleteCourse}
+            hiddenFields={{ id: course.id }}
+            confirmMessage={`コース「${course.title}」を削除しますか?配下のLevel・Lessonも削除されます`}
+          />
         </div>
       </div>
     </div>

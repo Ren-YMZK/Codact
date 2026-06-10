@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { updateTestCase, deleteTestCase } from './actions'
+import { DeleteButton } from '../../../../DeleteButton'
 
 interface TestCase {
   id: string
@@ -36,12 +37,11 @@ export function TestCaseRow({ tc, lessonTitle, courseId, levelId }: Props) {
             >
               {editing ? 'キャンセル' : '編集'}
             </button>
-            <form action={deleteTestCase}>
-              <input type="hidden" name="id" value={tc.id} />
-              <input type="hidden" name="courseId" value={courseId} />
-              <input type="hidden" name="levelId" value={levelId} />
-              <button type="submit" className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer">削除</button>
-            </form>
+            <DeleteButton
+              action={deleteTestCase}
+              hiddenFields={{ id: tc.id, courseId, levelId }}
+              confirmMessage={`テストケースを削除しますか?（${lessonTitle}）`}
+            />
           </div>
         </td>
       </tr>
