@@ -188,22 +188,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'AIレビューの生成に失敗しました' }, { status: 503 })
   }
 
-  // ai_reviewsテーブルに保存
-  const { data: aiReview, error: insertError } = await supabase
-    .from('ai_reviews')
-    .insert({ user_id: user.id, submission_id, review })
-    .select()
-    .single()
+  // ai_reviews保存とai_review_count+1をアトミックに実行
+  const { error: rpcError } = await supabase.rpc('save_ai_review_and_increment', {
+    p_user_id: user.id,
+    p_submission_id: submission_id,
+    p_review: review,
+  })
 
-  if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
+  if (rpcError) {
+    return NextResponse.json({ error: rpcError.message }, { status: 500 })
   }
 
-  // ai_review_countを+1
-  await supabase
-    .from('users')
-    .update({ ai_review_count: count + 1 })
-    .eq('id', user.id)
-
-  return NextResponse.json({ review: aiReview.review })
+  return NextResponse.json({ review })
 }
