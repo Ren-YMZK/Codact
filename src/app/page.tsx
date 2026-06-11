@@ -153,8 +153,36 @@ export default async function HomePage() {
                 段階的なカリキュラム
               </h3>
               <p className="text-sm text-gray-600 leading-6">
-                完全未経験から始められるLevel
-                0から、応用的な実装まで学べる上位Levelまで。実際のプロダクトを育てながら、実装力を体系的に身につけます。
+                完全未経験から始められるLevel 0から、応用的な実装まで学べる上位Levelまで。社員管理システムやショッピングカートなど、実際のプロダクトを育てながら実装力を体系的に身につけます。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* コース紹介セクション */}
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-center text-gray-900 mb-12">学べるコース</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Pythonコース */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 mb-4">
+                Python
+              </span>
+              <h3 className="text-base font-bold text-gray-900 mb-2">Pythonコース</h3>
+              <p className="text-sm text-gray-600 leading-6">
+                社員管理システムを育てながら、Pythonの基礎から実装力までを身につけます。全8Level・65Lesson。
+              </p>
+            </div>
+            {/* JavaScriptコース */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600 mb-4">
+                JavaScript
+              </span>
+              <h3 className="text-base font-bold text-gray-900 mb-2">JavaScriptコース</h3>
+              <p className="text-sm text-gray-600 leading-6">
+                ショッピングカートを作りながら、JavaScriptの基礎から実装力までを身につけます。全8Level・65Lesson。
               </p>
             </div>
           </div>
@@ -162,7 +190,7 @@ export default async function HomePage() {
       </section>
 
       {/* プラン比較セクション */}
-      <section className="py-20 px-4 bg-white">
+      <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-2xl font-bold text-center text-gray-900 mb-12">
             プラン
@@ -261,7 +289,7 @@ export default async function HomePage() {
       </section>
 
       {/* CTAセクション */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section className="py-20 px-4 bg-white">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
             さっそく始めよう
