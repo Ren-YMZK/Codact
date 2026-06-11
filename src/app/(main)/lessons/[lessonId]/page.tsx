@@ -29,7 +29,7 @@ export default async function LessonPage({
     nextResult,
     prevResult,
   ] = await Promise.all([
-    supabase.from('levels').select('id, order, course_id, concepts, built, next_preview').eq('id', lesson.level_id).single(),
+    supabase.from('levels').select('id, order, course_id, concepts, built, next_preview, courses(language)').eq('id', lesson.level_id).single(),
     supabase
       .from('lessons')
       .select('id')
@@ -58,6 +58,8 @@ export default async function LessonPage({
     nextPreview: (level.next_preview as string | null) ?? null,
   } : null
   const levelUrl = level ? `/courses/${level.course_id}/levels/${level.id}` : '/courses'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const language = (level?.courses as any)?.language ?? 'Python'
 
   let passedCode: string | null = null
   if (user) {
@@ -76,6 +78,7 @@ export default async function LessonPage({
   return (
     <LessonClient
       lesson={lesson}
+      language={language}
       prevLessonId={prevLesson?.id ?? null}
       nextLessonId={nextLesson?.id ?? null}
       isLastLesson={isLastLesson}

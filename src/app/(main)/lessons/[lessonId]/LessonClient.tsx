@@ -36,6 +36,7 @@ interface SubmissionResult {
 
 interface LessonClientProps {
   lesson: Lesson
+  language: string
   prevLessonId: string | null
   nextLessonId: string | null
   isLastLesson: boolean
@@ -80,6 +81,7 @@ const mdComponents: Components = {
 
 export default function LessonClient({
   lesson,
+  language,
   prevLessonId,
   nextLessonId,
   isLastLesson,
@@ -374,10 +376,10 @@ export default function LessonClient({
         {/* エディタエリア */}
         <div className="h-[60%] flex flex-col overflow-hidden">
           <div className="shrink-0 flex items-center px-4 py-2 bg-[#1e1e1e] border-b border-gray-700">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Python</span>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{language}</span>
           </div>
           <div className="flex-1 overflow-hidden">
-            <CodeEditor value={code} language="python" onChange={setCode} />
+            <CodeEditor value={code} language={language.toLowerCase()} onChange={setCode} />
           </div>
         </div>
 

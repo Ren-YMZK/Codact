@@ -6,6 +6,7 @@ import { getPlanLimit, applyMonthlyResetIfNeeded } from '@/lib/aiReview'
 
 const PROMPT_FAILED = `あなたはプログラミング学習サービスのメンターです。
 プログラミング初心者に対して、コードレビューを行ってください。
+あなたがレビューするのは{language}のコードです。
 
 # ルール
 - 答えやフルコードは絶対に出力しない
@@ -44,6 +45,7 @@ const PROMPT_FAILED = `あなたはプログラミング学習サービスのメ
 
 const PROMPT_PASSED = `あなたはプログラミング学習サービスのメンターです。
 テストに合格したコードに対して、実務目線でのレビューを行ってください。
+あなたがレビューするのは{language}のコードです。
 
 # ルール
 - 初心者にわかりやすい言葉で説明する
@@ -137,12 +139,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Lesson情報の取得に失敗しました' }, { status: 404 })
   }
 
-  // Level情報取得（order・course_id）
+  // Level情報取得（order・course_id）とcourse.language取得
   const { data: level } = await supabase
     .from('levels')
-    .select('order, course_id')
+    .select('order, course_id, courses(language)')
     .eq('id', lesson.level_id)
     .single()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const language: string = (level?.courses as any)?.language ?? 'Python'
 
   // 学習済み概念を取得（同コース内の現在Level以下の全concepts）
   let learnedConcepts = '（概念情報なし）'
@@ -166,10 +171,12 @@ export async function POST(request: NextRequest) {
 
   const prompt = isPassed
     ? PROMPT_PASSED
+        .replace('{language}', language)
         .replace('{learned_concepts}', learnedConcepts)
         .replace('{problem}', lesson.content)
         .replace('{code}', submission.code)
     : PROMPT_FAILED
+        .replace('{language}', language)
         .replace('{learned_concepts}', learnedConcepts)
         .replace('{problem}', lesson.content)
         .replace('{test_result}', testResultText)

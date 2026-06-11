@@ -1,7 +1,11 @@
 const JUDGE0_BASE_URL = 'https://ce.judge0.com'
-const PYTHON3_LANGUAGE_ID = 71
 const TIMEOUT_MS = 10000
 const POLL_INTERVAL_MS = 500
+
+const LANGUAGE_IDS: Record<string, number> = {
+  Python: 71,
+  JavaScript: 63,
+}
 
 export interface PistonResult {
   stdout: string
@@ -23,10 +27,16 @@ function getHeaders() {
   }
 }
 
-export async function executePython(
+export async function executeCode(
+  language: string,
   code: string,
   stdin: string = ''
 ): Promise<PistonResult> {
+  const languageId = LANGUAGE_IDS[language]
+  if (!languageId) {
+    throw new Error(`未対応の言語です: ${language}`)
+  }
+
   const headers = getHeaders()
 
   // Step 1: サブミッションを作成してトークンを取得
@@ -36,7 +46,7 @@ export async function executePython(
       method: 'POST',
       headers,
       body: JSON.stringify({
-        language_id: PYTHON3_LANGUAGE_ID,
+        language_id: languageId,
         source_code: toBase64(code),
         stdin: toBase64(stdin),
       }),

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { executePython } from '@/lib/piston'
+import { executeCode } from '@/lib/piston'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -18,11 +18,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'lesson_id と code は必須です' }, { status: 400 })
   }
 
+  // lesson → level → course と辿って言語を取得
+  const { data: lesson, error: lessonError } = await supabase
+    .from('lessons')
+    .select('level_id')
+    .eq('id', lesson_id)
+    .single()
+
+  if (lessonError || !lesson) {
+    return NextResponse.json({ error: 'Lesson情報の取得に失敗しました' }, { status: 404 })
+  }
+
+  const { data: level, error: levelError } = await supabase
+    .from('levels')
+    .select('course_id')
+    .eq('id', lesson.level_id)
+    .single()
+
+  if (levelError || !level) {
+    return NextResponse.json({ error: 'Level情報の取得に失敗しました' }, { status: 404 })
+  }
+
+  const { data: course, error: courseError } = await supabase
+    .from('courses')
+    .select('language')
+    .eq('id', level.course_id)
+    .single()
+
+  if (courseError || !course) {
+    return NextResponse.json({ error: 'コース情報の取得に失敗しました' }, { status: 404 })
+  }
+
   const { data: cases, error: casesError } = await supabase
     .from('test_cases')
     .select('input, expected')
     .eq('lesson_id', lesson_id)
-    .order('order')
+    .order('"order"')
 
   if (casesError) {
     return NextResponse.json({ error: casesError.message }, { status: 500 })
@@ -37,7 +68,7 @@ export async function POST(request: NextRequest) {
   try {
     results = await Promise.all(
       cases.map(async (tc) => {
-        const { stdout, stderr } = await executePython(code, tc.input)
+        const { stdout, stderr } = await executeCode(course.language, code, tc.input)
         const actual = stdout.trimEnd()
         const expected = tc.expected.trimEnd()
         return {
