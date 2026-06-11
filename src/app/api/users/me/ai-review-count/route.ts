@@ -12,12 +12,16 @@ export async function GET() {
 
   const { data: userData, error } = await supabase
     .from('users')
-    .select('plan, ai_review_count, ai_review_reset_at')
+    .select('plan, role, ai_review_count, ai_review_reset_at')
     .eq('id', user.id)
     .single()
 
   if (error || !userData) {
     return NextResponse.json({ error: 'ユーザー情報の取得に失敗しました' }, { status: 500 })
+  }
+
+  if (userData.role === 'admin') {
+    return NextResponse.json({ remaining: null, limit: null, count: 0, unlimited: true })
   }
 
   // 1ヶ月以上経過していたらリセット
@@ -31,5 +35,5 @@ export async function GET() {
   const limit = getPlanLimit(userData.plan)
   const remaining = Math.max(0, limit - count)
 
-  return NextResponse.json({ remaining, limit, count })
+  return NextResponse.json({ remaining, limit, count, unlimited: false })
 }

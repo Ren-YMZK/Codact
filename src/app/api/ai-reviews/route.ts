@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
   // ユーザー情報取得
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('plan, ai_review_count, ai_review_reset_at')
+    .select('plan, role, ai_review_count, ai_review_reset_at')
     .eq('id', user.id)
     .single()
 
@@ -102,18 +102,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'ユーザー情報の取得に失敗しました' }, { status: 500 })
   }
 
-  // 1ヶ月以上経過していたらリセット
-  const count = await applyMonthlyResetIfNeeded(
-    supabase,
-    user.id,
-    userData.ai_review_count,
-    userData.ai_review_reset_at,
-  )
+  const isAdmin = userData.role === 'admin'
 
-  // 残り回数チェック
-  const limit = getPlanLimit(userData.plan)
-  if (count >= limit) {
-    return NextResponse.json({ error: 'AIレビューの回数上限に達しました' }, { status: 403 })
+  if (!isAdmin) {
+    // 1ヶ月以上経過していたらリセット
+    const count = await applyMonthlyResetIfNeeded(
+      supabase,
+      user.id,
+      userData.ai_review_count,
+      userData.ai_review_reset_at,
+    )
+
+    // 残り回数チェック
+    const limit = getPlanLimit(userData.plan)
+    if (count >= limit) {
+      return NextResponse.json({ error: 'AIレビューの回数上限に達しました' }, { status: 403 })
+    }
   }
 
   // 提出情報取得
@@ -195,15 +199,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'AIレビューの生成に失敗しました' }, { status: 503 })
   }
 
-  // ai_reviews保存とai_review_count+1をアトミックに実行
-  const { error: rpcError } = await supabase.rpc('save_ai_review_and_increment', {
-    p_user_id: user.id,
-    p_submission_id: submission_id,
-    p_review: review,
-  })
-
-  if (rpcError) {
-    return NextResponse.json({ error: rpcError.message }, { status: 500 })
+  // admin はカウント加算なし、通常ユーザーはアトミックに保存+加算
+  if (isAdmin) {
+    const { error: insertError } = await supabase
+      .from('ai_reviews')
+      .insert({ user_id: user.id, submission_id, review })
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 })
+    }
+  } else {
+    const { error: rpcError } = await supabase.rpc('save_ai_review_and_increment', {
+      p_user_id: user.id,
+      p_submission_id: submission_id,
+      p_review: review,
+    })
+    if (rpcError) {
+      return NextResponse.json({ error: rpcError.message }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ review })

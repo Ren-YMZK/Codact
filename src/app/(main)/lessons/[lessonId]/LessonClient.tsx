@@ -95,7 +95,7 @@ export default function LessonClient({
   const [isRunning, setIsRunning] = useState(false)
   const [result, setResult] = useState<SubmissionResult | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
-  const [reviewCount, setReviewCount] = useState<{ remaining: number; limit: number } | null>(null)
+  const [reviewCount, setReviewCount] = useState<{ remaining: number | null; limit: number | null; unlimited: boolean } | null>(null)
   const [isReviewing, setIsReviewing] = useState(false)
   const [reviewText, setReviewText] = useState<string | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
@@ -109,7 +109,7 @@ export default function LessonClient({
       const res = await fetch('/api/users/me/ai-review-count')
       if (res.ok) {
         const data = await res.json()
-        setReviewCount({ remaining: data.remaining, limit: data.limit })
+        setReviewCount({ remaining: data.remaining, limit: data.limit, unlimited: data.unlimited === true })
       }
     } catch {
       // 残り回数取得失敗は無視
@@ -193,7 +193,7 @@ export default function LessonClient({
 
   const passed = result?.status === 'passed'
   const failedCases = result?.test_result.filter((r) => !r.passed) ?? []
-  const canReview = result !== null && (reviewCount === null || reviewCount.remaining > 0)
+  const canReview = result !== null && (reviewCount === null || reviewCount.unlimited || (reviewCount.remaining !== null && reviewCount.remaining > 0))
 
   function passedMessage(count: number) {
     return count === 1 ? 'テストに合格しました!' : `全${count}個のテストに合格しました!`
@@ -416,10 +416,14 @@ export default function LessonClient({
             <p className="text-xs text-gray-400">
               今月の残り回数：
               <span className="font-medium text-gray-600">
-                {reviewCount !== null ? `${reviewCount.remaining} / ${reviewCount.limit}` : '- / -'}
+                {reviewCount === null
+                  ? '- / -'
+                  : reviewCount.unlimited
+                  ? '無制限'
+                  : `${reviewCount.remaining} / ${reviewCount.limit}`}
               </span>
             </p>
-            {reviewCount !== null && reviewCount.remaining === 0 && (
+            {reviewCount !== null && !reviewCount.unlimited && reviewCount.remaining === 0 && (
               <a href="/pricing" className="text-xs text-blue-600 hover:underline">
                 プランをアップグレードする
               </a>
