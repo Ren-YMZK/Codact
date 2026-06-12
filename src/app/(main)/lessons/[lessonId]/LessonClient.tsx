@@ -101,7 +101,7 @@ export default function LessonClient({
   const [reviewText, setReviewText] = useState<string | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
   const [showSummaryModal, setShowSummaryModal] = useState(false)
-  const [showResetModal, setShowResetModal] = useState(false)
+  const [showClearedBanner, setShowClearedBanner] = useState(passedCode !== null)
 
   const content = lesson.content.replace(/\\n/g, '\n')
 
@@ -118,7 +118,6 @@ export default function LessonClient({
   }
 
   useEffect(() => { fetchReviewCount() }, [])
-  useEffect(() => { if (passedCode) setShowResetModal(true) }, [])
 
   async function updateProgress(status: 'not_started' | 'in_progress' | 'completed') {
     await fetch(`/api/progress/${lesson.id}`, {
@@ -131,7 +130,7 @@ export default function LessonClient({
   async function handleReset() {
     setCode(lesson.initial_code)
     await updateProgress('not_started')
-    setShowResetModal(false)
+    setShowClearedBanner(false)
   }
 
   async function runTest() {
@@ -202,33 +201,6 @@ export default function LessonClient({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* リセット確認モーダル */}
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </span>
-              <h2 className="text-base font-bold text-gray-900">このLessonはクリア済みです</h2>
-            </div>
-            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-              過去の提出コードを表示しています。やり直す場合はリセットしてください。
-            </p>
-            <div className="flex flex-col gap-2">
-              <Button variant="secondary" size="md" onClick={handleReset} className="w-full bg-gray-100 hover:bg-gray-200 border-0 text-gray-800">
-                リセットしてやり直す
-              </Button>
-              <Button variant="primary" size="md" onClick={() => setShowResetModal(false)} className="w-full">
-                このまま見返す
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Levelサマリーモーダル */}
       {showSummaryModal && levelSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -331,6 +303,23 @@ export default function LessonClient({
           </div>
         </div>
 
+        {showClearedBanner && (
+          <div className="shrink-0 mx-4 mt-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between gap-3">
+            <p className="text-xs text-green-700">✓ このLessonはクリア済みです。過去の提出コードを表示しています。</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (window.confirm('コードを初期状態に戻して、進捗を未完了にします。よろしいですか?')) {
+                  handleReset()
+                }
+              }}
+            >
+              リセットしてやり直す
+            </Button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-6 py-5 text-gray-900">
           <div>
             <Markdown components={mdComponents}>{content}</Markdown>
@@ -400,6 +389,11 @@ export default function LessonClient({
               {isReviewing ? 'レビュー中...' : 'AIレビューを受ける'}
             </button>
           </div>
+
+          {/* 残り1回時の警告 */}
+          {reviewCount !== null && !reviewCount.unlimited && reviewCount.remaining !== null && reviewCount.remaining <= 1 && reviewCount.remaining > 0 && (
+            <p className="text-xs text-amber-600">今月の残り回数があと{reviewCount.remaining}回です。</p>
+          )}
 
           {/* 残り回数 */}
           <div className="flex items-center gap-2">
