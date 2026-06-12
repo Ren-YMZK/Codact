@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import LessonClient from './LessonClient'
+import { extractLanguage } from '@/lib/supabaseHelpers'
 
 export default async function LessonPage({
   params,
@@ -58,8 +59,7 @@ export default async function LessonPage({
     nextPreview: (level.next_preview as string | null) ?? null,
   } : null
   const levelUrl = level ? `/courses/${level.course_id}/levels/${level.id}` : '/courses'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const language = (level?.courses as any)?.language ?? 'Python'
+  const language = extractLanguage(level?.courses)
 
   let passedCode: string | null = null
   if (user) {
