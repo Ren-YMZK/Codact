@@ -13,7 +13,15 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-gray-900 mb-6">コース管理</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold text-gray-900">コース管理</h1>
+        <a
+          href="/admin/stats"
+          className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+        >
+          統計を見る →
+        </a>
+      </div>
 
       {/* コース一覧（カード） */}
       {(!courses || courses.length === 0) ? (
