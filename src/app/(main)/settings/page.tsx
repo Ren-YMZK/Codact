@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/(auth)/logout/actions'
 import { Button } from '@/components/ui/Button'
 import { Container } from '@/components/ui/Container'
+import { ManageSubscriptionButton } from './ManageSubscriptionButton'
 
 const PLAN_LABELS: Record<string, string> = {
   free: '無料プラン',
@@ -68,6 +69,7 @@ export default async function SettingsPage() {
             {displayPlan === 'free' && (
               <Button href="/pricing" variant="secondary" size="sm">アップグレード</Button>
             )}
+            {plan === 'paid' && <ManageSubscriptionButton />}
           </div>
         </section>
 

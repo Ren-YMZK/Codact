@@ -241,6 +241,8 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - `checkout.session.completed`: planをpaidに更新・stripe_customer_idを保存
 - `customer.subscription.deleted`: planをfreeに戻す
 - WebhookはcreateAdminClient()を使用
+- Customer Portal：`/api/stripe/create-portal-session`（POST）でセッション作成→リダイレクト。
+  `plan='paid'`のユーザーのみ設定ページに「サブスクリプションを管理」ボタンを表示（vip対象外）
 
 ---
 
