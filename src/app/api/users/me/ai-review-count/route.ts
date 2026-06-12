@@ -32,7 +32,7 @@ export async function GET() {
     userData.ai_review_reset_at,
   )
 
-  const limit = getPlanLimit(userData.plan)
+  const limit = getPlanLimit(userData.plan, userData.role)
   const remaining = Math.max(0, limit - count)
 
   return NextResponse.json({ remaining, limit, count, unlimited: false })

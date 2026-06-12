@@ -224,8 +224,9 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 
 | プラン | AIレビュー回数/月 |
 |---|---|
-| free | 3回 |
+| free | 10回 |
 | paid | 30回 |
+| vip | 30回（role='vip'で判定・課金なし・統計には通常ユーザーとして含まれる） |
 | admin | 無制限（チェック・カウント加算スキップ） |
 
 月次リセット: `ai_review_reset_at`から30日経過で`ai_review_count`を0にリセット（`applyMonthlyResetIfNeeded`）。

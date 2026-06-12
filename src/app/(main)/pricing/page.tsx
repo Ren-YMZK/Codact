@@ -31,7 +31,7 @@ export default async function PricingPage() {
             <ul className="space-y-3 flex-1 mb-8">
               <FeatureItem>全コースのLesson閲覧</FeatureItem>
               <FeatureItem>コード実行・テスト</FeatureItem>
-              <FeatureItem muted>AIレビュー 月3回まで</FeatureItem>
+              <FeatureItem muted>AIレビュー 月10回まで</FeatureItem>
             </ul>
             <div className="px-4 py-2.5 text-center text-sm font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-xl">
               現在のプラン

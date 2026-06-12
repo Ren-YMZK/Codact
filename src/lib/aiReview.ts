@@ -1,7 +1,8 @@
-export const FREE_LIMIT = 3
+export const FREE_LIMIT = 10
 export const PAID_LIMIT = 30
 
-export function getPlanLimit(plan: string): number {
+export function getPlanLimit(plan: string, role?: string | null): number {
+  if (role === 'vip') return PAID_LIMIT
   return plan === 'paid' ? PAID_LIMIT : FREE_LIMIT
 }
 

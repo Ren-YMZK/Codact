@@ -6,6 +6,7 @@ import { Container } from '@/components/ui/Container'
 const PLAN_LABELS: Record<string, string> = {
   free: '無料プラン',
   paid: '有料プラン',
+  vip: 'VIPプラン',
 }
 
 export default async function SettingsPage() {
@@ -16,7 +17,7 @@ export default async function SettingsPage() {
   const { data: userData } = user
     ? await supabase
         .from('users')
-        .select('name, email, plan')
+        .select('name, email, plan, role')
         .eq('id', user.id)
         .single()
     : { data: null }
@@ -24,6 +25,8 @@ export default async function SettingsPage() {
   const displayName = userData?.name ?? user?.user_metadata?.full_name ?? '—'
   const email = userData?.email ?? user?.email ?? '—'
   const plan = userData?.plan ?? 'free'
+  const role = userData?.role ?? 'user'
+  const displayPlan = role === 'vip' ? 'vip' : plan
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -54,15 +57,15 @@ export default async function SettingsPage() {
           </div>
           <div className="px-6 py-5 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-900">{PLAN_LABELS[plan] ?? plan}</p>
-              {plan === 'free' && (
-                <p className="text-xs text-gray-400 mt-0.5">AIレビュー 月3回まで</p>
+              <p className="text-sm font-medium text-gray-900">{PLAN_LABELS[displayPlan] ?? displayPlan}</p>
+              {displayPlan === 'free' && (
+                <p className="text-xs text-gray-400 mt-0.5">AIレビュー 月10回まで</p>
               )}
-              {plan === 'paid' && (
+              {(displayPlan === 'paid' || displayPlan === 'vip') && (
                 <p className="text-xs text-gray-400 mt-0.5">AIレビュー 月30回まで</p>
               )}
             </div>
-            {plan === 'free' && (
+            {displayPlan === 'free' && (
               <Button href="/pricing" variant="secondary" size="sm">アップグレード</Button>
             )}
           </div>

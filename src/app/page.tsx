@@ -194,7 +194,7 @@ export default async function HomePage() {
               <p className="text-3xl font-bold text-gray-900 mb-1">¥0</p>
               <p className="text-sm text-gray-400 mb-6">ずっと無料</p>
               <ul className="space-y-3 mb-8">
-                {["全Level・全Lessonが学習可能", "AIレビュー 月3回"].map(
+                {["全Level・全Lessonが学習可能", "AIレビュー 月10回"].map(
                   (item) => (
                     <li
                       key={item}

@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     )
 
     // 残り回数チェック
-    const limit = getPlanLimit(userData.plan)
+    const limit = getPlanLimit(userData.plan, userData.role)
     if (count >= limit) {
       return NextResponse.json({ error: 'AIレビューの回数上限に達しました' }, { status: 403 })
     }
