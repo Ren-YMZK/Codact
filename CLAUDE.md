@@ -107,7 +107,7 @@ src/
 
 | テーブル | カラム |
 |---|---|
-| users | id・email・name・plan(free/paid)・role(user/admin)・ai_review_count・ai_review_reset_at・stripe_customer_id・has_seen_welcome・created_at |
+| users | id・email・name・plan(free/paid)・role(user/vip/admin)・ai_review_count・ai_review_reset_at・stripe_customer_id・has_seen_welcome・created_at |
 | courses | id・title・language・description・order |
 | levels | id・course_id・title・order・concepts（text[]）・built・next_preview |
 | lessons | id・level_id・title・content・initial_code・hint・order |
@@ -116,6 +116,7 @@ src/
 | progress | id・user_id・lesson_id・status(not_started/in_progress/completed)・completed_at |
 | test_cases | id・lesson_id・input・expected・order |
 
+`users.role`：CHECK制約あり（'user'/'vip'/'admin'のみ許可）。新しいroleを追加する場合は制約の作り直しが必要。
 `levels.concepts`：そのLevelで学ぶ概念一覧（AIレビューの制約生成に使用）
 `levels.built`・`levels.next_preview`：Level完了画面のサマリー表示に使用
 
@@ -192,6 +193,7 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 |---|---|
 | /admin | コース一覧・追加・編集・削除 |
 | /admin/stats | 統計ダッシュボード（サマリー・Lesson別進捗・ユーザー別一覧） |
+| /admin/users | ユーザー管理（VIPロール付与・解除） |
 | /admin/courses/[courseId] | Level一覧・追加・編集・削除・順番変更 |
 | /admin/courses/[courseId]/levels/[levelId] | Lesson一覧・追加・編集・削除・順番変更・テストケース管理 |
 
