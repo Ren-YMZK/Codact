@@ -178,9 +178,10 @@ PostgRESTのリレーションがobjectで返るかarrayで返るか実行時に
 
 ### aiReview.ts
 ```ts
-export const FREE_LIMIT = 3
+export const FREE_LIMIT = 10
 export const PAID_LIMIT = 30
-export function getPlanLimit(plan: string): number
+export function getPlanLimit(plan: string, role?: string | null): number
+// role='vip' の場合は plan に関わらず PAID_LIMIT を返す
 export function isMonthlyResetNeeded(resetAtIso: string): boolean
 export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, resetAtIso): Promise<number>
 ```
@@ -237,12 +238,12 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 
 ## Stripe
 
-- 月額800円・14日間無料トライアル
-- `checkout.session.completed`: planをpaidに更新・stripe_customer_idを保存
-- `customer.subscription.deleted`: planをfreeに戻す
+- 月額800円・14日間無料トライアル（`subscription_data: { trial_period_days: 14 }` をコード側で指定）
+- 再登録によるトライアル繰り返しは現状許容する方針
+- Webhookイベント：`checkout.session.completed`（planをpaidに更新・stripe_customer_idを保存）と`customer.subscription.deleted`（planをfreeに戻す）の2つのみ処理
 - WebhookはcreateAdminClient()を使用
-- Customer Portal：`/api/stripe/create-portal-session`（POST）でセッション作成→リダイレクト。
-  `plan='paid'`のユーザーのみ設定ページに「サブスクリプションを管理」ボタンを表示（vip対象外）
+- **本番環境の運用方針**：本番APIキー・STRIPE_PRICE_ID・STRIPE_WEBHOOK_SECRETはVercel環境変数で管理。`.env.local`はテスト環境キーのままにしておく
+- **Customer Portal**：`/api/stripe/create-portal-session`（POST）でセッション作成→リダイレクト。`plan='paid'`のユーザーのみ設定ページに「サブスクリプションを管理」ボタンを表示（vip対象外）。利用にはStripeダッシュボード（Billing → Customer portal）でのポータル設定の保存が必要。キャンセルは期間終了時まで有効のまま（即時解約は無効）に設定すること
 
 ---
 
