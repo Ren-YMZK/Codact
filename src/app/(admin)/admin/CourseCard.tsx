@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { updateCourse, deleteCourse } from './courses/actions'
 import { DeleteButton } from './DeleteButton'
 import { Button } from '@/components/ui/Button'
+import { LANGUAGE_IDS } from '@/lib/piston'
 
 interface Course {
   id: string
@@ -32,7 +33,11 @@ export function CourseCard({ course }: { course: Course }) {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">言語 *</label>
-            <input name="language" required defaultValue={course.language} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
+            <select name="language" required defaultValue={course.language} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900">
+              {Object.keys(LANGUAGE_IDS).map((lang) => (
+                <option key={lang} value={lang}>{lang}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>

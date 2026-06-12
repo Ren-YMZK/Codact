@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import * as Sentry from '@sentry/nextjs'
 
 export default function PricingClient() {
   const [loading, setLoading] = useState(false)
@@ -19,7 +20,8 @@ export default function PricingClient() {
         return
       }
       router.push(data.url)
-    } catch {
+    } catch (error) {
+      Sentry.captureException(error)
       setError('ネットワークエラーが発生しました')
     } finally {
       setLoading(false)

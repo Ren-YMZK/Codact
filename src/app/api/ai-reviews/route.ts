@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { createClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/anthropic'
 import { getPlanLimit, applyMonthlyResetIfNeeded } from '@/lib/aiReview'
@@ -203,7 +204,8 @@ export async function POST(request: NextRequest) {
       messages: [{ role: 'user', content: prompt }],
     })
     review = message.content[0].type === 'text' ? message.content[0].text : ''
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error)
     return NextResponse.json({ error: 'AIレビューの生成に失敗しました' }, { status: 503 })
   }
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Markdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import CodeEditor from '@/components/editor/CodeEditor'
+import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/Button'
 
 function buildDiffRows(expected: string, actual: string) {
@@ -124,8 +125,8 @@ export default function LessonClient({
         const data = await res.json()
         setReviewCount({ remaining: data.remaining, limit: data.limit, unlimited: data.unlimited === true })
       }
-    } catch {
-      // 残り回数取得失敗は無視
+    } catch (error) {
+      Sentry.captureException(error)
     }
   }
 
@@ -136,7 +137,7 @@ export default function LessonClient({
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
-    }).catch(() => { /* 進捗更新の失敗はサイレントに無視 */ })
+    }).catch((error) => { Sentry.captureException(error) })
   }
 
   async function handleReset() {
@@ -171,7 +172,8 @@ export default function LessonClient({
           setShowSummaryModal(true)
         }
       }
-    } catch {
+    } catch (error) {
+      Sentry.captureException(error)
       setRunError('ネットワークエラーが発生しました')
     } finally {
       setIsRunning(false)
@@ -196,7 +198,8 @@ export default function LessonClient({
       }
       setReviewText(data.review)
       await fetchReviewCount()
-    } catch {
+    } catch (error) {
+      Sentry.captureException(error)
       setReviewError('ネットワークエラーが発生しました')
     } finally {
       setIsReviewing(false)

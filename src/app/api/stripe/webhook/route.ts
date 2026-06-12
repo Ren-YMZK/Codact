@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -19,7 +20,8 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event
   try {
     event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error)
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 })
   }
 

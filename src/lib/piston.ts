@@ -1,8 +1,8 @@
-const JUDGE0_BASE_URL = 'https://ce.judge0.com'
+const JUDGE0_BASE_URL = process.env.JUDGE0_BASE_URL ?? 'https://ce.judge0.com'
 const TIMEOUT_MS = 10000
 const POLL_INTERVAL_MS = 500
 
-const LANGUAGE_IDS: Record<string, number> = {
+export const LANGUAGE_IDS: Record<string, number> = {
   Python: 71,
   JavaScript: 63,
 }
