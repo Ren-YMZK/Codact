@@ -6,6 +6,18 @@ import Markdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import CodeEditor from '@/components/editor/CodeEditor'
 import { Button } from '@/components/ui/Button'
+
+function buildDiffRows(expected: string, actual: string) {
+  const expLines = expected.split('\n')
+  const actLines = actual.split('\n')
+  const len = Math.max(expLines.length, actLines.length)
+  return Array.from({ length: len }, (_, i) => ({
+    exp: expLines[i] as string | undefined,
+    act: actLines[i] as string | undefined,
+    diff: expLines[i] !== actLines[i],
+  }))
+}
+
 interface LevelSummary {
   concepts: string[]
   built: string
@@ -472,18 +484,40 @@ export default function LessonClient({
                             <pre className="mt-0.5 bg-red-50 rounded p-1.5 text-red-700 overflow-x-auto whitespace-pre-wrap">{fc.stderr}</pre>
                           </div>
                         )}
-                        {!fc.stderr && (
-                          <>
-                            <div>
-                              <span className="font-medium">期待値：</span>
-                              <pre className="mt-0.5 bg-white rounded p-1.5 border border-gray-200 overflow-x-auto">{fc.expected}</pre>
-                            </div>
-                            <div>
-                              <span className="font-medium">実際の出力：</span>
-                              <pre className="mt-0.5 bg-white rounded p-1.5 border border-gray-200 overflow-x-auto">{fc.actual || '（出力なし）'}</pre>
-                            </div>
-                          </>
-                        )}
+                        {!fc.stderr && (() => {
+                          const rows = buildDiffRows(fc.expected, fc.actual)
+                          return (
+                            <>
+                              <div>
+                                <span className="font-medium">期待値：</span>
+                                <div className="mt-1 rounded border border-gray-200 overflow-hidden">
+                                  {rows.map((row, j) => (
+                                    <div key={j} className={`flex gap-2 px-2 py-0.5 font-mono text-xs leading-5 ${row.diff ? 'bg-red-50' : 'bg-white'}`}>
+                                      <span className="text-gray-400 select-none shrink-0 w-4 text-right">{j + 1}</span>
+                                      <span className={`whitespace-pre ${row.exp === undefined ? 'text-gray-400 italic' : ''}`}>
+                                        {row.exp ?? '（なし）'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="font-medium">実際の出力：</span>
+                                <div className="mt-1 rounded border border-gray-200 overflow-hidden">
+                                  {rows.map((row, j) => (
+                                    <div key={j} className={`flex gap-2 px-2 py-0.5 font-mono text-xs leading-5 ${row.diff ? 'bg-red-50' : 'bg-white'}`}>
+                                      <span className="text-gray-400 select-none shrink-0 w-4 text-right">{j + 1}</span>
+                                      <span className={`whitespace-pre ${row.act === undefined ? 'text-gray-400 italic' : ''}`}>
+                                        {row.act ?? '（なし）'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-400">※ 出力が期待値と完全に一致する必要があります</p>
+                            </>
+                          )
+                        })()}
                       </div>
                     ))}
                   </div>
