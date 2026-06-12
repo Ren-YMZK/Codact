@@ -1,4 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { StatsTree } from './StatsTree'
+import type { LessonStatRow } from './StatsTree'
 
 type SummaryRow = {
   total_users: number
@@ -7,20 +9,6 @@ type SummaryRow = {
   total_ai_reviews: number
   new_users_7d: number
   active_users_7d: number
-}
-
-type LessonStatRow = {
-  course_id: string
-  course_title: string
-  level_order: number
-  level_title: string
-  lesson_id: string
-  lesson_title: string
-  lesson_order: number
-  completed_count: number
-  in_progress_count: number
-  submission_count: number
-  ai_review_count: number
 }
 
 type UserStatRow = {
@@ -54,14 +42,6 @@ export default async function AdminStatsPage() {
       ? ((summary.paid_users / summary.total_users) * 100).toFixed(1)
       : '0.0'
 
-  const courseMap = new Map<string, { title: string; lessons: LessonStatRow[] }>()
-  for (const row of lessonStats) {
-    if (!courseMap.has(row.course_id)) {
-      courseMap.set(row.course_id, { title: row.course_title, lessons: [] })
-    }
-    courseMap.get(row.course_id)!.lessons.push(row)
-  }
-
   return (
     <div>
       <h1 className="text-xl font-bold text-gray-900 mb-6">統計</h1>
@@ -80,64 +60,18 @@ export default async function AdminStatsPage() {
         <SummaryCard label="アクティブ（直近7日）" value={summary?.active_users_7d ?? 0} />
       </div>
 
-      {/* Lesson別 進捗状況 */}
-      <h2 className="text-base font-semibold text-gray-900 mb-3">Lesson別 進捗状況</h2>
-
-      {courseMap.size === 0 ? (
-        <p className="text-sm text-gray-400 mb-8">データがありません</p>
-      ) : (
-        Array.from(courseMap.entries()).map(([courseId, { title, lessons }]) => (
-          <div key={courseId} className="bg-white rounded-xl border border-gray-200 mb-6 overflow-hidden">
-            <div className="bg-gray-50 border-b border-gray-200 px-4 py-2.5">
-              <span className="text-sm font-semibold text-gray-700">{title}</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 whitespace-nowrap">Level</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Lesson</th>
-                    <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 whitespace-nowrap">完了人数</th>
-                    <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 whitespace-nowrap">着手中</th>
-                    <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 whitespace-nowrap">提出回数</th>
-                    <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 whitespace-nowrap">平均提出</th>
-                    <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500 whitespace-nowrap">AIレビュー数</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {lessons.map((ls) => {
-                    const avg =
-                      ls.completed_count > 0
-                        ? (ls.submission_count / ls.completed_count).toFixed(1)
-                        : '-'
-                    return (
-                      <tr key={ls.lesson_id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">
-                          Lv.{ls.level_order}&#x20;{ls.level_title}
-                        </td>
-                        <td className="px-4 py-2.5 text-gray-700">{ls.lesson_title}</td>
-                        <td className="px-4 py-2.5 text-right font-medium text-gray-900">
-                          {ls.completed_count.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-2.5 text-right text-gray-500">
-                          {ls.in_progress_count.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-2.5 text-right text-gray-700">
-                          {ls.submission_count.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-2.5 text-right text-gray-500">{avg}</td>
-                        <td className="px-4 py-2.5 text-right text-gray-500">
-                          {ls.ai_review_count.toLocaleString()}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))
-      )}
+      {/* Lesson別 進捗状況（アコーディオン） */}
+      <div className="flex items-center gap-3 mb-3">
+        <h2 className="text-base font-semibold text-gray-900">Lesson別 進捗状況</h2>
+        <span className="text-xs text-gray-400">コース行をクリックで展開</span>
+      </div>
+      <div className="flex items-center gap-4 mb-2 text-xs text-gray-400">
+        <span>
+          <span className="inline-block w-3 h-3 bg-red-50 border border-red-200 rounded-sm mr-1" />
+          平均提出3回以上または未完了で3回以上提出されたLesson（つまずきポイント）
+        </span>
+      </div>
+      <StatsTree lessonStats={lessonStats} />
 
       {/* ユーザー別 進捗一覧 */}
       <h2 className="text-base font-semibold text-gray-900 mb-3">ユーザー別 進捗一覧</h2>
