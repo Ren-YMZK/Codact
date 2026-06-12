@@ -3,10 +3,20 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/Button'
 import { Container } from '@/components/ui/Container'
+import { extractLesson } from '@/lib/supabaseHelpers'
 
 const languageColors: Record<string, { bg: string; text: string }> = {
   Python: { bg: 'bg-blue-50', text: 'text-blue-600' },
   JavaScript: { bg: 'bg-yellow-50', text: 'text-yellow-600' },
+}
+
+interface CourseSummaryRow {
+  course_id: string
+  course_title: string
+  language: string
+  course_order: number
+  total_lessons: number
+  completed_lessons: number
 }
 
 export default async function DashboardPage() {
@@ -15,52 +25,34 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [
-    { data: courses },
-    { data: levels },
-    { data: lessons },
-    { data: progress },
-  ] = await Promise.all([
-    supabase.from('courses').select('id, title, language').order('order', { ascending: true }),
-    supabase.from('levels').select('id, course_id'),
-    supabase.from('lessons').select('id, title, level_id'),
-    supabase.from('progress').select('lesson_id, status, completed_at').eq('user_id', user.id),
+  // コース集計・in_progress・最終completed を並列取得
+  const [summaryResult, inProgressResult, lastCompletedResult] = await Promise.all([
+    supabase.rpc('get_course_progress_summary', { p_user_id: user.id }),
+    supabase
+      .from('progress')
+      .select('lessons(id, title)')
+      .eq('user_id', user.id)
+      .eq('status', 'in_progress')
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('progress')
+      .select('lessons(id, title)')
+      .eq('user_id', user.id)
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
 
-  // level_id → course_id のマップ
-  const levelToCourse = new Map((levels ?? []).map(l => [l.id, l.course_id]))
+  const courses = (summaryResult.data ?? []) as CourseSummaryRow[]
+  const hasCourses = courses.length > 0
 
-  // course_id → 総Lesson数 / lesson_id → course_id のマップ
-  const courseTotalMap = new Map<string, number>()
-  const lessonToCourse = new Map<string, string>()
-  for (const lesson of lessons ?? []) {
-    const courseId = levelToCourse.get(lesson.level_id)
-    if (!courseId) continue
-    courseTotalMap.set(courseId, (courseTotalMap.get(courseId) ?? 0) + 1)
-    lessonToCourse.set(lesson.id, courseId)
-  }
-
-  // course_id → 完了Lesson数のマップ
-  const courseCompletedMap = new Map<string, number>()
-  for (const p of progress ?? []) {
-    if (p.status !== 'completed') continue
-    const courseId = lessonToCourse.get(p.lesson_id)
-    if (!courseId) continue
-    courseCompletedMap.set(courseId, (courseCompletedMap.get(courseId) ?? 0) + 1)
-  }
-
-  // 最後に取り組んだLessonを特定（in_progress優先、次に最終完了）
-  const inProgressEntry = (progress ?? []).find(p => p.status === 'in_progress')
-  const lastCompletedEntry = [...(progress ?? [])]
-    .filter(p => p.status === 'completed' && p.completed_at)
-    .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())[0]
-  const lastLessonId = inProgressEntry?.lesson_id ?? lastCompletedEntry?.lesson_id
-
-  const lastLesson = lastLessonId
-    ? (lessons ?? []).find(l => l.id === lastLessonId) ?? null
+  // in_progress 優先、なければ最後にcompleted したLesson
+  const nextProgressData = inProgressResult.data ?? lastCompletedResult.data
+  const lastLesson = nextProgressData
+    ? extractLesson((nextProgressData as { lessons: unknown }).lessons)
     : null
-
-  const hasCourses = (courses ?? []).length > 0
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -106,23 +98,23 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="mt-8 flex flex-col gap-4">
-            {(courses ?? []).map((course) => {
-              const total = courseTotalMap.get(course.id) ?? 0
-              const completed = courseCompletedMap.get(course.id) ?? 0
+            {courses.map((row) => {
+              const total = row.total_lessons
+              const completed = row.completed_lessons
               const percent = total > 0 ? Math.round((completed / total) * 100) : 0
-              const color = languageColors[course.language] ?? { bg: 'bg-gray-50', text: 'text-gray-600' }
+              const color = languageColors[row.language] ?? { bg: 'bg-gray-50', text: 'text-gray-600' }
 
               return (
-                <div key={course.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-5">
+                <div key={row.course_id} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <h2 className="text-base font-semibold text-gray-900">{course.title}</h2>
+                      <h2 className="text-base font-semibold text-gray-900">{row.course_title}</h2>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color.bg} ${color.text}`}>
-                        {course.language}
+                        {row.language}
                       </span>
                     </div>
                     <Link
-                      href={`/courses/${course.id}`}
+                      href={`/courses/${row.course_id}`}
                       className="shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium"
                     >
                       詳細

@@ -101,17 +101,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'submission_id は必須です' }, { status: 400 })
   }
 
-  // ユーザー情報取得
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('plan, role, ai_review_count, ai_review_reset_at')
-    .eq('id', user.id)
-    .single()
+  // ユーザー情報と提出情報を並列取得
+  const [userResult, submissionResult] = await Promise.all([
+    supabase
+      .from('users')
+      .select('plan, role, ai_review_count, ai_review_reset_at')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('submissions')
+      .select('code, status, test_result, lesson_id')
+      .eq('id', submission_id)
+      .eq('user_id', user.id)
+      .single(),
+  ])
 
-  if (userError || !userData) {
+  if (userResult.error || !userResult.data) {
     return NextResponse.json({ error: 'ユーザー情報の取得に失敗しました' }, { status: 500 })
   }
+  if (submissionResult.error || !submissionResult.data) {
+    return NextResponse.json({ error: '提出情報の取得に失敗しました' }, { status: 404 })
+  }
 
+  const userData = userResult.data
+  const submission = submissionResult.data
   const isAdmin = userData.role === 'admin'
 
   if (!isAdmin) {
@@ -130,36 +143,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 提出情報取得
-  const { data: submission, error: subError } = await supabase
-    .from('submissions')
-    .select('code, status, test_result, lesson_id')
-    .eq('id', submission_id)
-    .eq('user_id', user.id)
-    .single()
-
-  if (subError || !submission) {
-    return NextResponse.json({ error: '提出情報の取得に失敗しました' }, { status: 404 })
-  }
-
-  // Lesson情報取得（level_id も含む）
-  const { data: lesson, error: lessonError } = await supabase
+  // Lesson + Level + Language を1クエリで取得
+  const { data: lessonFull, error: lessonError } = await supabase
     .from('lessons')
-    .select('content, level_id')
+    .select('content, levels(order, course_id, courses(language))')
     .eq('id', submission.lesson_id)
     .single()
 
-  if (lessonError || !lesson) {
+  if (lessonError || !lessonFull) {
     return NextResponse.json({ error: 'Lesson情報の取得に失敗しました' }, { status: 404 })
   }
 
-  // Level情報取得（order・course_id）とcourse.language取得
-  const { data: level } = await supabase
-    .from('levels')
-    .select('order, course_id, courses(language)')
-    .eq('id', lesson.level_id)
-    .single()
-
+  // levels は object か array の可能性があるため安全に取得
+  const levelRaw = Array.isArray(lessonFull.levels) ? lessonFull.levels[0] : lessonFull.levels
+  const level = levelRaw as { order: number; course_id: string; courses: unknown } | null | undefined
   const language = extractLanguage(level?.courses)
 
   // 学習済み概念を取得（同コース内の現在Level以下の全concepts）
@@ -186,12 +183,12 @@ export async function POST(request: NextRequest) {
     ? PROMPT_PASSED
         .replace('{language}', language)
         .replace('{learned_concepts}', learnedConcepts)
-        .replace('{problem}', lesson.content)
+        .replace('{problem}', lessonFull.content)
         .replace('{code}', submission.code)
     : PROMPT_FAILED
         .replace('{language}', language)
         .replace('{learned_concepts}', learnedConcepts)
-        .replace('{problem}', lesson.content)
+        .replace('{problem}', lessonFull.content)
         .replace('{test_result}', testResultText)
         .replace('{code}', submission.code)
 
