@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import PricingClient from './PricingClient'
+import { Container } from '@/components/ui/Container'
 
 export default async function PricingPage() {
   const supabase = await createClient()
@@ -13,7 +14,7 @@ export default async function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-3xl mx-auto px-4 py-16">
+      <Container size="narrow" className="py-16">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900">料金プラン</h1>
           <p className="mt-3 text-sm text-gray-500">自分のペースでコードを書く力を身につけよう</p>
@@ -65,7 +66,7 @@ export default async function PricingPage() {
         <p className="mt-8 text-center text-xs text-gray-400">
           無料トライアル期間中はいつでもキャンセルできます。クレジットカード情報はStripeで安全に管理されます。
         </p>
-      </div>
+      </Container>
     </div>
   )
 }

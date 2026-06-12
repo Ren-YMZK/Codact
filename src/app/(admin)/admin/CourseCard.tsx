@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { updateCourse, deleteCourse } from './courses/actions'
 import { DeleteButton } from './DeleteButton'
+import { Button } from '@/components/ui/Button'
 
 interface Course {
   id: string
@@ -42,8 +43,8 @@ export function CourseCard({ course }: { course: Course }) {
             <input name="order" type="number" defaultValue={course.order} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="flex gap-2 pt-1">
-            <button type="submit" className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer">保存</button>
-            <button type="button" onClick={() => setEditing(false)} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer">キャンセル</button>
+            <Button type="submit" size="sm">保存</Button>
+            <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(false)}>キャンセル</Button>
           </div>
         </form>
       </div>

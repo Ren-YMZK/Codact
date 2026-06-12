@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Markdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import CodeEditor from '@/components/editor/CodeEditor'
+import { Button } from '@/components/ui/Button'
 interface LevelSummary {
   concepts: string[]
   built: string
@@ -47,7 +48,7 @@ interface LessonClientProps {
 }
 
 const mdComponents: Components = {
-  p:          ({ children }) => <p className="mb-4 text-[15px] text-gray-700 leading-7">{children}</p>,
+  p:          ({ children }) => <p className="mb-4 text-base text-gray-700 leading-7">{children}</p>,
   h1:         ({ children }) => <h1 className="text-xl font-bold text-gray-900 mt-6 mb-3">{children}</h1>,
   h2:         ({ children }) => {
     const isQuestion = String(children).trim() === '問題'
@@ -63,7 +64,7 @@ const mdComponents: Components = {
   h3:         ({ children }) => <h3 className="text-sm font-semibold text-gray-800 mt-4 mb-1.5">{children}</h3>,
   ul:         ({ children }) => <ul className="list-disc list-inside mb-4 space-y-1.5">{children}</ul>,
   ol:         ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-1.5">{children}</ol>,
-  li:         ({ children }) => <li className="text-[15px] text-gray-700 leading-7">{children}</li>,
+  li:         ({ children }) => <li className="text-base text-gray-700 leading-7">{children}</li>,
   strong:     ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
   blockquote: ({ children }) => (
     <blockquote className="border-l-4 border-blue-300 pl-4 italic text-gray-600 my-4">{children}</blockquote>
@@ -75,7 +76,7 @@ const mdComponents: Components = {
     const isBlock = Boolean(className?.includes('language-'))
     return isBlock
       ? <code className={`${className ?? ''} text-sm font-mono text-gray-100`}>{children}</code>
-      : <code className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[13px] font-mono">{children}</code>
+      : <code className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
   },
 }
 
@@ -217,20 +218,12 @@ export default function LessonClient({
               過去の提出コードを表示しています。やり直す場合はリセットしてください。
             </p>
             <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={handleReset}
-                className="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
-              >
+              <Button variant="secondary" size="md" onClick={handleReset} className="w-full bg-gray-100 hover:bg-gray-200 border-0 text-gray-800">
                 リセットしてやり直す
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowResetModal(false)}
-                className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
-              >
+              </Button>
+              <Button variant="primary" size="md" onClick={() => setShowResetModal(false)} className="w-full">
                 このまま見返す
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -285,12 +278,9 @@ export default function LessonClient({
               </div>
             )}
 
-            <Link
-              href={levelUrl}
-              className="inline-flex items-center justify-center w-full gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors"
-            >
+            <Button variant="success" size="md" href={levelUrl} className="w-full">
               Lesson一覧へ
-            </Link>
+            </Button>
           </div>
         </div>
       )}
@@ -464,22 +454,16 @@ export default function LessonClient({
                     </p>
                   </div>
                   {!isLastLesson ? (
-                    <Link
-                      href={`/lessons/${nextLessonId}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                    >
+                    <Button variant="success" size="sm" href={`/lessons/${nextLessonId}`}>
                       次のLessonへ
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
-                    </Link>
+                    </Button>
                   ) : (
-                    <Link
-                      href={levelUrl}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                    >
+                    <Button variant="success" size="sm" href={levelUrl}>
                       Levelクリア！一覧へ
-                    </Link>
+                    </Button>
                   )}
                 </div>
               ) : (

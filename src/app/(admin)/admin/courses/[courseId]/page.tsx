@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { addLevel } from './actions'
 import { LevelRow } from './LevelRow'
+import { Button } from '@/components/ui/Button'
 
 export default async function AdminCoursePage({
   params,
@@ -93,12 +94,7 @@ export default async function AdminCoursePage({
             />
           </div>
           <div className="col-span-2">
-            <button
-              type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer"
-            >
-              追加
-            </button>
+            <Button type="submit">追加</Button>
           </div>
         </form>
       </div>

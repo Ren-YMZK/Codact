@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/(auth)/logout/actions'
+import { Button } from '@/components/ui/Button'
+import { Container } from '@/components/ui/Container'
 
 const PLAN_LABELS: Record<string, string> = {
   free: '無料プラン',
@@ -25,7 +27,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-xl mx-auto px-4 py-12">
+      <Container size="xs" className="py-12">
         <h1 className="text-2xl font-bold text-gray-900 mb-8">設定</h1>
 
         {/* プロフィールセクション */}
@@ -61,12 +63,7 @@ export default async function SettingsPage() {
               )}
             </div>
             {plan === 'free' && (
-              <a
-                href="/pricing"
-                className="px-3 py-1.5 text-xs font-semibold text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                アップグレード
-              </a>
+              <Button href="/pricing" variant="secondary" size="sm">アップグレード</Button>
             )}
           </div>
         </section>
@@ -78,16 +75,11 @@ export default async function SettingsPage() {
           </div>
           <div className="px-6 py-5">
             <form action={logout}>
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-              >
-                ログアウト
-              </button>
+              <Button type="submit" variant="danger" size="md">ログアウト</Button>
             </form>
           </div>
         </section>
-      </div>
+      </Container>
     </div>
   )
 }

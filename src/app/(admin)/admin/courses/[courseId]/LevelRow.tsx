@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { updateLevel, deleteLevel, moveLevel } from './actions'
 import { DeleteButton } from '../../DeleteButton'
+import { Button } from '@/components/ui/Button'
 
 interface Level { id: string; title: string; order: number; concepts: string[] | null; built: string | null; next_preview: string | null }
 interface Props { level: Level; courseId: string; isFirst: boolean; isLast: boolean }
@@ -59,8 +60,8 @@ export function LevelRow({ level, courseId, isFirst, isLast }: Props) {
               />
             </div>
             <div className="flex gap-2">
-              <button type="submit" className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer">保存</button>
-              <button type="button" onClick={() => setEditing(false)} className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer">キャンセル</button>
+              <Button type="submit" size="sm">保存</Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(false)}>キャンセル</Button>
             </div>
           </form>
         </td>

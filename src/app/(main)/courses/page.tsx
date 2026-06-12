@@ -1,5 +1,6 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { Button } from '@/components/ui/Button'
+import { Container } from '@/components/ui/Container'
 
 const languageColors: Record<string, { bg: string; text: string }> = {
   Python: { bg: 'bg-blue-50', text: 'text-blue-600' },
@@ -27,7 +28,7 @@ export default async function CoursesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <Container size="wide" className="py-12">
         {/* ページタイトル */}
         <h1 className="text-2xl font-bold text-gray-900">コース一覧</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -62,18 +63,15 @@ export default async function CoursesPage() {
                   </p>
 
                   {/* 始めるボタン */}
-                  <Link
-                    href={`/courses/${course.id}`}
-                    className="mt-5 block text-center py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                  >
+                  <Button href={`/courses/${course.id}`} className="mt-5 w-full">
                     始める
-                  </Link>
+                  </Button>
                 </div>
               )
             })}
           </div>
         )}
-      </div>
+      </Container>
     </div>
   )
 }

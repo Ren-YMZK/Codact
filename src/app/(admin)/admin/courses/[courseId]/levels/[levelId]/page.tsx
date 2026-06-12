@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { addLesson, addTestCase } from './actions'
 import { LessonRow } from './LessonRow'
 import { TestCaseRow } from './TestCaseRow'
+import { Button } from '@/components/ui/Button'
 
 export default async function AdminLevelPage({
   params,
@@ -91,9 +92,7 @@ export default async function AdminLevelPage({
             <textarea name="hint" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="col-span-2">
-            <button type="submit" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer">
-              追加
-            </button>
+            <Button type="submit">追加</Button>
           </div>
         </form>
       </div>
@@ -153,9 +152,7 @@ export default async function AdminLevelPage({
             <textarea name="expected" required rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono text-gray-900" />
           </div>
           <div className="col-span-2">
-            <button type="submit" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer">
-              追加
-            </button>
+            <Button type="submit">追加</Button>
           </div>
         </form>
       </div>

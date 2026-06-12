@@ -1,31 +1,9 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { StatusIcon } from '@/components/ui/StatusIcon'
+import { Button } from '@/components/ui/Button'
 
 type Status = 'not_started' | 'in_progress' | 'completed'
-
-function StatusIcon({ status }: { status: Status }) {
-  if (status === 'completed') {
-    return (
-      <span className="shrink-0 w-7 h-7 rounded-full bg-green-100 flex items-center justify-center">
-        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </span>
-    )
-  }
-  if (status === 'in_progress') {
-    return (
-      <span className="shrink-0 w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center">
-        <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-      </span>
-    )
-  }
-  return (
-    <span className="shrink-0 w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
-      <span className="w-2.5 h-2.5 rounded-full bg-gray-300" />
-    </span>
-  )
-}
 
 export default async function LevelLessonsPage({
   params,
@@ -182,25 +160,19 @@ export default async function LevelLessonsPage({
 
             {/* 次へ進むボタン */}
             {nextLevel ? (
-              <Link
-                href={`/courses/${courseId}/levels/${nextLevel.id}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors"
-              >
+              <Button variant="success" size="md" href={`/courses/${courseId}/levels/${nextLevel.id}`}>
                 次のLevelへ
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
-              </Link>
+              </Button>
             ) : (
-              <Link
-                href="/courses"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors"
-              >
+              <Button variant="success" size="md" href="/courses">
                 コース一覧へ
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
-              </Link>
+              </Button>
             )}
           </div>
         )}

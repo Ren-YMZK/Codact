@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { addCourse } from './courses/actions'
 import { CourseCard } from './CourseCard'
+import { Button } from '@/components/ui/Button'
 
 export default async function AdminPage() {
   const admin = createAdminClient()
@@ -41,12 +42,7 @@ export default async function AdminPage() {
             <input name="description" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
           <div className="col-span-2">
-            <button
-              type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer"
-            >
-              追加
-            </button>
+            <Button type="submit">追加</Button>
           </div>
         </form>
       </div>

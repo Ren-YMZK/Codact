@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { Button } from '@/components/ui/Button'
+import { Container } from '@/components/ui/Container'
 
 const languageColors: Record<string, { bg: string; text: string }> = {
   Python: { bg: 'bg-blue-50', text: 'text-blue-600' },
@@ -62,7 +64,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-3xl mx-auto px-4 py-12">
+      <Container size="narrow" className="py-12">
         {/* ヘッダー */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
@@ -76,27 +78,21 @@ export default async function DashboardPage() {
               <p className="text-xs text-blue-200 mb-1">次のLesson</p>
               <p className="text-base font-semibold text-white truncate">{lastLesson.title}</p>
             </div>
-            <Link
-              href={`/lessons/${lastLesson.id}`}
-              className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-blue-50 text-blue-700 text-sm font-bold rounded-xl transition-colors"
-            >
+            <Button href={`/lessons/${lastLesson.id}`} variant="secondary" size="md" className="shrink-0 text-blue-700 border-0">
               続きから始める
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
-            </Link>
+            </Button>
           </div>
         ) : hasCourses ? (
           <div className="mt-6">
-            <Link
-              href="/courses"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors"
-            >
+            <Button href="/courses" variant="primary" size="md">
               コースを始める
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
-            </Link>
+            </Button>
           </div>
         ) : null}
 
@@ -157,7 +153,7 @@ export default async function DashboardPage() {
             })}
           </div>
         )}
-      </div>
+      </Container>
     </div>
   )
 }

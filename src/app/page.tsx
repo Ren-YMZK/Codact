@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/Button";
+import { Container } from "@/components/ui/Container";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -24,12 +26,9 @@ export default async function HomePage() {
             >
               ログイン
             </Link>
-            <Link
-              href="/register"
-              className="text-sm font-semibold px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
+            <Button href="/register" variant="primary" size="sm">
               無料で始める
-            </Link>
+            </Button>
           </div>
         </div>
       </header>
@@ -44,26 +43,17 @@ export default async function HomePage() {
             知識をインプットするだけでは、何も作れない。Codactは実装問題とAIレビューで、本当に使えるプログラミングスキルを鍛える学習サービスです。
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
+            <Button
               href="/register"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white hover:bg-blue-50 text-blue-700 text-base font-bold rounded-xl transition-colors shadow-md"
+              variant="secondary"
+              size="lg"
+              className="w-full sm:w-auto text-blue-700 border-0 shadow-md"
             >
               無料で始める
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 5l7 7-7 7"
-                />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
-            </Link>
+            </Button>
             <Link
               href="/login"
               className="text-sm text-blue-200 hover:text-white transition-colors"
@@ -229,12 +219,9 @@ export default async function HomePage() {
                   ),
                 )}
               </ul>
-              <Link
-                href="/register"
-                className="block text-center px-5 py-2.5 border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-semibold rounded-xl transition-colors"
-              >
+              <Button href="/register" variant="secondary" size="md" className="w-full">
                 無料で始める
-              </Link>
+              </Button>
             </div>
             {/* 有料プラン */}
             <div className="rounded-2xl border-2 border-blue-600 bg-blue-600 p-8 text-white relative">
@@ -277,12 +264,9 @@ export default async function HomePage() {
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/pricing"
-                className="block text-center px-5 py-2.5 bg-white hover:bg-blue-50 text-blue-700 text-sm font-bold rounded-xl transition-colors"
-              >
+              <Button href="/pricing" variant="secondary" size="md" className="w-full text-blue-700 border-0">
                 14日間無料で試す
-              </Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -297,26 +281,12 @@ export default async function HomePage() {
           <p className="text-sm text-gray-500 mb-8">
             無料プランでも全てのコースが学習できます。まずは試してみましょう。
           </p>
-          <Link
-            href="/register"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-base font-bold rounded-xl transition-colors shadow-md"
-          >
+          <Button href="/register" variant="primary" size="lg" className="shadow-md">
             無料で始める
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 5l7 7-7 7"
-              />
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
-          </Link>
+          </Button>
         </div>
       </section>
 
