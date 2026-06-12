@@ -1,3 +1,34 @@
+function toObj(val: unknown): Record<string, unknown> | null {
+  if (!val || typeof val !== 'object') return null
+  if (Array.isArray(val)) {
+    const first = val[0]
+    return first && typeof first === 'object' ? (first as Record<string, unknown>) : null
+  }
+  return val as Record<string, unknown>
+}
+
+export interface NextLessonInfo {
+  id: string
+  title: string
+  levelTitle: string
+  levelOrder: number
+  courseTitle: string
+}
+
+export function extractNextLesson(val: unknown): NextLessonInfo | null {
+  const lesson = toObj(val)
+  if (!lesson || !('id' in lesson)) return null
+  const level = toObj(lesson.levels)
+  const course = level ? toObj(level.courses) : null
+  return {
+    id: String(lesson.id),
+    title: String(lesson.title ?? ''),
+    levelTitle: String(level?.title ?? ''),
+    levelOrder: Number(level?.order ?? 0),
+    courseTitle: String(course?.title ?? ''),
+  }
+}
+
 export function extractLesson(val: unknown): { id: string; title: string } | null {
   if (!val || typeof val !== 'object') return null
   if (Array.isArray(val)) {

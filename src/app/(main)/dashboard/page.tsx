@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/Button'
 import { Container } from '@/components/ui/Container'
-import { extractLesson } from '@/lib/supabaseHelpers'
+import { extractNextLesson } from '@/lib/supabaseHelpers'
 
 const languageColors: Record<string, { bg: string; text: string }> = {
   Python: { bg: 'bg-blue-50', text: 'text-blue-600' },
@@ -30,14 +30,14 @@ export default async function DashboardPage() {
     supabase.rpc('get_course_progress_summary', { p_user_id: user.id }),
     supabase
       .from('progress')
-      .select('lessons(id, title)')
+      .select('lessons(id, title, levels(title, order, courses(title)))')
       .eq('user_id', user.id)
       .eq('status', 'in_progress')
       .limit(1)
       .maybeSingle(),
     supabase
       .from('progress')
-      .select('lessons(id, title)')
+      .select('lessons(id, title, levels(title, order, courses(title)))')
       .eq('user_id', user.id)
       .eq('status', 'completed')
       .order('completed_at', { ascending: false })
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   // in_progress 優先、なければ最後にcompleted したLesson
   const nextProgressData = inProgressResult.data ?? lastCompletedResult.data
   const lastLesson = nextProgressData
-    ? extractLesson((nextProgressData as { lessons: unknown }).lessons)
+    ? extractNextLesson((nextProgressData as { lessons: unknown }).lessons)
     : null
 
   return (
@@ -67,7 +67,9 @@ export default async function DashboardPage() {
         {lastLesson ? (
           <div className="mt-6 bg-blue-600 rounded-2xl px-6 py-5 flex items-center justify-between gap-4 flex-wrap">
             <div className="min-w-0">
-              <p className="text-xs text-blue-200 mb-1">次のLesson</p>
+              <p className="text-xs text-blue-200 mb-1 truncate">
+                {lastLesson.courseTitle} / Level {lastLesson.levelOrder} {lastLesson.levelTitle}
+              </p>
               <p className="text-base font-semibold text-white truncate">{lastLesson.title}</p>
             </div>
             <Button href={`/lessons/${lastLesson.id}`} variant="secondary" size="md" className="shrink-0 text-blue-700 border-0">
@@ -105,7 +107,11 @@ export default async function DashboardPage() {
               const color = languageColors[row.language] ?? { bg: 'bg-gray-50', text: 'text-gray-600' }
 
               return (
-                <div key={row.course_id} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-5">
+                <Link
+                  key={row.course_id}
+                  href={`/courses/${row.course_id}`}
+                  className="block bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-5 hover:border-blue-300 hover:shadow-md transition"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
                       <h2 className="text-base font-semibold text-gray-900">{row.course_title}</h2>
@@ -113,12 +119,9 @@ export default async function DashboardPage() {
                         {row.language}
                       </span>
                     </div>
-                    <Link
-                      href={`/courses/${row.course_id}`}
-                      className="shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      詳細
-                    </Link>
+                    <svg className="w-5 h-5 shrink-0 text-gray-300 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
 
                   {/* プログレスバー */}
@@ -140,7 +143,7 @@ export default async function DashboardPage() {
                       <p className="text-xs text-gray-400">{percent}%</p>
                     </div>
                   </div>
-                </div>
+                </Link>
               )
             })}
           </div>
