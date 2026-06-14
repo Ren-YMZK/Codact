@@ -120,6 +120,8 @@ src/
 `levels.concepts`：そのLevelで学ぶ概念一覧（AIレビューの制約生成に使用）
 `levels.built`・`levels.next_preview`：Level完了画面のサマリー表示に使用
 
+**public.usersの自動作成（DBトリガー）**：auth.usersへのINSERT時にトリガー`on_auth_user_created`が発火し、`public.handle_new_user`関数がpublic.usersのレコードを自動作成する。メール登録・Google OAuthなど全ての登録経路で共通して動作する。nameは`raw_user_meta_data`の`full_name`→`name`→メールローカル部の順で取得。アプリ側（register/actions.ts等）にpublic.usersへのINSERTを書いてはならない（二重作成になる）。
+
 ---
 
 ## DB RPC関数（Supabase）
