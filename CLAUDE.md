@@ -208,10 +208,13 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - メニュー項目：role='user'→「VIPにする」「ユーザーを削除」、role='vip'→「VIP解除」「ユーザーを削除」、role='admin'→メニュー非表示
 - **ユーザー削除フロー**：メールアドレス入力確認モーダル → `deleteUser` Server Action
   - ガード1：対象が`role='admin'`なら中断
-  - ガード2：`stripe_customer_id`がある場合、`active`・`trialing`のサブスクを確認し、有効なら中断してエラーメッセージを返す
+  - ガード2：`stripe_customer_id`がある場合、`active`・`trialing`のサブスクを確認し、有効なら中断してエラーメッセージを返す。Stripeに顧客が存在しない場合（`resource_missing` エラー）は「有効なサブスクなし」とみなして削除を続行する（テスト環境由来の`stripe_customer_id`が本番に存在しないケースへの対応）。それ以外のStripeエラーは安全側に倒して削除を中断しSentryに記録
   - 削除：`createAdminClient()`で`public.users`の行を削除（CASCADEでsubmissions/progress/ai_reviewsも連鎖削除）→ `auth.admin.deleteUser(userId)`でauth.usersを削除
   - `deleteUser`は`Promise<{ error?: string }>`を返し、クライアント側でエラー表示に使用
-- **DB CASCADE設定**：submissions・progress・ai_reviewsのuser_id外部キーはON DELETE CASCADE済み。public.usersの行削除で関連データが自動連鎖削除される
+- **DB CASCADE設定（設定済み）**：
+  - submissions・progress・ai_reviewsの`user_id`外部キー → ON DELETE CASCADE（public.users削除で連鎖削除）
+  - ai_reviewsの`submission_id`外部キー → ON DELETE CASCADE（submissions削除で連鎖削除）
+- **DB権限（設定済み）**：service_roleにpublic.users・submissions・progress・ai_reviewsのDELETE権限をGRANT済み。SupabaseのデフォルトではRLSポリシーによりservice_roleでもDELETEできないテーブルがある。管理者からの削除操作を伴うテーブルを新規追加する場合は同様のGRANTが必要
 - **注意**：public.usersとauth.usersは外部キーで繋がっていないため、両方を個別に削除する必要がある
 
 ### /admin/stats の実装詳細
