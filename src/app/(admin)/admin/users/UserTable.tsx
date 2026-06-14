@@ -36,11 +36,16 @@ function RoleBadge({ role }: { role: string | null }) {
 
 function KebabMenu({ user, onDeleteClick }: { user: UserRow; onDeleteClick: (u: UserRow) => void }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) {
         setOpen(false)
       }
     }
@@ -48,17 +53,33 @@ function KebabMenu({ user, onDeleteClick }: { user: UserRow; onDeleteClick: (u: 
     return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [])
 
+  function handleToggle() {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      })
+    }
+    setOpen(o => !o)
+  }
+
   return (
-    <div ref={ref} className="relative inline-block">
+    <div className="inline-block">
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={handleToggle}
         className="px-2 py-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors text-base leading-none"
         aria-label="メニューを開く"
       >
         ⋮
       </button>
-      {open && (
-        <div className="absolute right-0 top-full z-10 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+      {open && pos && (
+        <div
+          ref={menuRef}
+          style={{ position: 'fixed', top: pos.top, right: pos.right }}
+          className="z-50 w-44 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+        >
           {user.role === 'user' && (
             <form action={setVip}>
               <input type="hidden" name="userId" value={user.id} />
