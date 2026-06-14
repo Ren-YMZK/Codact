@@ -26,11 +26,16 @@ export async function register(
   _prevState: RegisterState,
   formData: FormData
 ): Promise<RegisterState> {
+  const name = formData.get('name') as string
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signUp({ email, password })
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: name } },
+  })
 
   if (error) {
     return { error: toJapaneseError(error.message) }
