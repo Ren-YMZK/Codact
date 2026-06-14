@@ -194,7 +194,8 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 
 | URL | 内容 |
 |---|---|
-| /admin | コース一覧・追加・編集・削除 |
+| /admin | 管理者ハブ（コース管理・統計・ユーザー管理へのリンクカード一覧） |
+| /admin/courses | コース一覧・追加・編集・削除 |
 | /admin/stats | 統計ダッシュボード（サマリー・Lesson別進捗・ユーザー別一覧） |
 | /admin/users | ユーザー管理（VIPロール付与・解除・アカウント削除） |
 | /admin/courses/[courseId] | Level一覧・追加・編集・削除・順番変更 |

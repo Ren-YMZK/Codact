@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { updateTestCase, deleteTestCase } from './actions'
-import { DeleteButton } from '../../../../DeleteButton'
+import { DeleteButton } from '../../../DeleteButton'
 import { Button } from '@/components/ui/Button'
 
 interface TestCase {

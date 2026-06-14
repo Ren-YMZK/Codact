@@ -1,63 +1,40 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import { addCourse } from './courses/actions'
-import { CourseCard } from './CourseCard'
-import { Button } from '@/components/ui/Button'
-import { LANGUAGE_IDS } from '@/lib/piston'
+import Link from 'next/link'
 
-export default async function AdminPage() {
-  const admin = createAdminClient()
-  const { data: courses, error } = await admin
-    .from('courses')
-    .select('id, title, language, description, order')
-    .order('order', { ascending: true })
+const MENU_ITEMS = [
+  {
+    href: '/admin/courses',
+    label: 'コース管理',
+    description: 'コース・Level・Lessonの作成と編集',
+  },
+  {
+    href: '/admin/stats',
+    label: '統計',
+    description: '学習進捗・Lesson別サマリー・ユーザー別一覧',
+  },
+  {
+    href: '/admin/users',
+    label: 'ユーザー管理',
+    description: 'VIPロール付与・アカウント削除',
+  },
+]
 
+export default function AdminTopPage() {
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900">コース管理</h1>
-        <a
-          href="/admin/stats"
-          className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          統計を見る →
-        </a>
-      </div>
-
-      {/* コース一覧（カード） */}
-      {(!courses || courses.length === 0) ? (
-        <p className="text-sm text-gray-400 mb-8">コースがありません</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
-        </div>
-      )}
-
-      {/* コース追加フォーム */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">コースを追加</h2>
-        <form action={addCourse} className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">タイトル *</label>
-            <input name="title" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">言語 *</label>
-            <select name="language" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900">
-              {Object.keys(LANGUAGE_IDS).map((lang) => (
-                <option key={lang} value={lang}>{lang}</option>
-              ))}
-            </select>
-          </div>
-          <div className="col-span-2">
-            <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
-            <input name="description" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
-          </div>
-          <div className="col-span-2">
-            <Button type="submit">追加</Button>
-          </div>
-        </form>
+      <h1 className="text-xl font-bold text-gray-900 mb-6">管理者メニュー</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {MENU_ITEMS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="bg-white border border-gray-200 rounded-xl p-6 hover:border-blue-300 hover:shadow-sm transition-all group"
+          >
+            <p className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
+              {item.label}
+            </p>
+            <p className="text-xs text-gray-400">{item.description}</p>
+          </Link>
+        ))}
       </div>
     </div>
   )

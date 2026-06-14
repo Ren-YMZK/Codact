@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { updateLesson, deleteLesson, moveLesson } from './actions'
-import { DeleteButton } from '../../../../DeleteButton'
+import { DeleteButton } from '../../../DeleteButton'
 import { Button } from '@/components/ui/Button'
 
 interface Lesson {

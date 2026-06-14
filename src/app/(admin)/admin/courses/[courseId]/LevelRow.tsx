@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { updateLevel, deleteLevel, moveLevel } from './actions'
-import { DeleteButton } from '../../DeleteButton'
+import { DeleteButton } from '../DeleteButton'
 import { Button } from '@/components/ui/Button'
 
 interface Level { id: string; title: string; order: number; concepts: string[] | null; built: string | null; next_preview: string | null }

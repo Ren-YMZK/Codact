@@ -24,7 +24,7 @@ export default async function AdminCoursePage({
     <div>
       {/* パンくず */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-400 mb-6">
-        <Link href="/admin" className="hover:text-gray-600 transition-colors">管理者トップ</Link>
+        <Link href="/admin/courses" className="hover:text-gray-600 transition-colors">コース管理</Link>
         <span>/</span>
         <span className="text-gray-700 font-medium">{course.title}</span>
       </nav>

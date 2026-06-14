@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { updateCourse, deleteCourse } from './courses/actions'
+import { updateCourse, deleteCourse } from './actions'
 import { DeleteButton } from './DeleteButton'
 import { Button } from '@/components/ui/Button'
 import { LANGUAGE_IDS } from '@/lib/piston'
