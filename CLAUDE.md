@@ -194,7 +194,7 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 |---|---|
 | /admin | コース一覧・追加・編集・削除 |
 | /admin/stats | 統計ダッシュボード（サマリー・Lesson別進捗・ユーザー別一覧） |
-| /admin/users | ユーザー管理（VIPロール付与・解除） |
+| /admin/users | ユーザー管理（VIPロール付与・解除・アカウント削除） |
 | /admin/courses/[courseId] | Level一覧・追加・編集・削除・順番変更 |
 | /admin/courses/[courseId]/levels/[levelId] | Lesson一覧・追加・編集・削除・順番変更・テストケース管理 |
 
@@ -202,6 +202,17 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - データ操作: Server Actions + `createAdminClient()`（RLSバイパス）
 - コース追加・編集のlanguageはセレクトボックス（`LANGUAGE_IDS`のキー由来）
 - 編集フォームはClient Componentでインライン表示・Server Actionで保存
+
+### /admin/users の実装詳細
+- 各ユーザー行の右端に三点メニュー（⋮）、クリックでドロップダウン開閉（メニュー外クリックで閉じる）
+- メニュー項目：role='user'→「VIPにする」「ユーザーを削除」、role='vip'→「VIP解除」「ユーザーを削除」、role='admin'→メニュー非表示
+- **ユーザー削除フロー**：メールアドレス入力確認モーダル → `deleteUser` Server Action
+  - ガード1：対象が`role='admin'`なら中断
+  - ガード2：`stripe_customer_id`がある場合、`active`・`trialing`のサブスクを確認し、有効なら中断してエラーメッセージを返す
+  - 削除：`createAdminClient()`で`public.users`の行を削除（CASCADEでsubmissions/progress/ai_reviewsも連鎖削除）→ `auth.admin.deleteUser(userId)`でauth.usersを削除
+  - `deleteUser`は`Promise<{ error?: string }>`を返し、クライアント側でエラー表示に使用
+- **DB CASCADE設定**：submissions・progress・ai_reviewsのuser_id外部キーはON DELETE CASCADE済み。public.usersの行削除で関連データが自動連鎖削除される
+- **注意**：public.usersとauth.usersは外部キーで繋がっていないため、両方を個別に削除する必要がある
 
 ### /admin/stats の実装詳細
 - `stats/page.tsx`（Server Component）でRPC呼び出し → `StatsTree.tsx`（Client Component）に渡す
