@@ -89,12 +89,21 @@ export async function deleteUser(userId: string): Promise<{ error?: string }> {
 
   if (target?.stripe_customer_id) {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-    const [activeList, trialingList] = await Promise.all([
-      stripe.subscriptions.list({ customer: target.stripe_customer_id, status: 'active' }),
-      stripe.subscriptions.list({ customer: target.stripe_customer_id, status: 'trialing' }),
-    ])
-    if (activeList.data.length > 0 || trialingList.data.length > 0) {
-      return { error: 'このユーザーは有効なサブスクリプションを持っています。先にStripeで解約してください。' }
+    try {
+      const [activeList, trialingList] = await Promise.all([
+        stripe.subscriptions.list({ customer: target.stripe_customer_id, status: 'active' }),
+        stripe.subscriptions.list({ customer: target.stripe_customer_id, status: 'trialing' }),
+      ])
+      if (activeList.data.length > 0 || trialingList.data.length > 0) {
+        return { error: 'このユーザーは有効なサブスクリプションを持っています。先にStripeで解約してください。' }
+      }
+    } catch (stripeError) {
+      if (stripeError instanceof Stripe.errors.StripeError && stripeError.code === 'resource_missing') {
+        // 顧客がStripeに存在しない（テスト環境のIDなど）＝有効なサブスクなし、削除続行
+      } else {
+        Sentry.captureException(stripeError, { extra: { action: 'deleteUser', userId } })
+        return { error: 'サブスクリプションの確認に失敗しました' }
+      }
     }
   }
 
