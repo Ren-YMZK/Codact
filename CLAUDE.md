@@ -327,9 +327,28 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 
 ---
 
+## ダッシュボード（`(main)/dashboard/page.tsx`）
+
+### 表示要素
+1. **続きから始めるCTA**：`in_progress` 優先、なければ最後に completed した Lesson
+2. **コース進捗カード**：`get_course_progress_summary` RPC でコース別集計（プログレスバー＋完了数）
+3. **理解度マップ**（`ConceptMap.tsx`）：`user_weaknesses` × `concepts` を集計してカテゴリ別理解度を表示
+
+### 理解度マップの仕様
+- **フェーズ1（既存 Promise.all）**：admin で `user_weaknesses`・`concepts`・`lesson_concepts`（全件）を並列取得。concepts/lesson_concepts は authenticated GRANT 未設定のため admin 必須
+- カテゴリ集計：category 単位で `success/(success+fail)` を算出。データなしカテゴリは「まだ挑戦していません」
+- 弱点概念：`fail_count >= 1` かつ理解度低い順 TOP5 を「重点的に復習したい概念」として表示
+- **フェーズ2（弱点 TOP5 確定後）**：弱点概念に紐づく lesson_ids を絞って admin で失敗提出を `created_at DESC` 取得 → 各概念の最新失敗Lessonを特定し `reviewLesson: { id, title }` として付与
+- 「重点的に復習したい概念」リストの各項目に「`Lesson名`を復習する →」リンク（`/lessons/[id]`）を表示（reviewLesson が null の概念はリンクなし）
+- カテゴリ表示順：理解度低い順（苦手順）→ データなしカテゴリを末尾
+- 空状態（user_weaknesses 0件）：「レッスンでAIレビューを受けると理解度が表示されます」を表示
+- `ConceptMap.tsx` は `CategoryStat`・`WeakConceptStat`（`conceptId`・`reviewLesson` 含む）型を export。`page.tsx` でデータ集計後に props として渡す
+
+---
+
 ## AIメンター進化ロードマップ
 
-> **注意：段階1・段階2フェーズ2-Aは実装済み。段階2フェーズ2-B以降は構想・未実装。**
+> **注意：段階1・段階2（フェーズ2-A・2-B）は実装済み。段階3以降は構想・未実装。**
 
 ### 背景・競合優位性
 
@@ -347,9 +366,9 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - **フェーズ2-A（データ基盤）**：concepts/lesson_concepts/user_weaknesses テーブルを作成。36概念マスタを投入し、`scripts/assign-concepts.ts` で128 Lessonに443件の概念を紐づけ済み
 - **フェーズ2-B（つまずき判定）**：AIレビュー時に失敗提出のみ `<weak_concepts>` タグで概念を判定。成功時は全概念の success_count +1、失敗時はAI判定概念の fail_count +1 を `user_weaknesses` にupsert。`updateUserWeaknesses()` 関数が `api/ai-reviews/route.ts` に実装済み
 
-**段階3：個別推薦**
-- 弱点プロファイルと各LessonのConceptsタグを照合
-- 「弱点克服におすすめのLesson」を既存コンテンツの中から提示する
+**段階3：個別推薦**（部分実装済み）
+- **実装済み**：ダッシュボードの「重点的に復習したい概念」リストに「最新の失敗Lesson → 復習する」リンクを表示。`lesson_concepts` × `submissions(failed)` から復習対象Lessonを特定（`dashboard/page.tsx`）
+- **未実装**：弱点プロファイルと全Lessonの概念タグを照合し「弱点克服におすすめの未完了Lesson」を提示する汎用推薦機能
 
 **段階4：動的Lesson生成**
 - 弱点に応じてAIが補習課題（問題文・初期コード・テストケース）を生成
