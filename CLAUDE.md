@@ -129,9 +129,11 @@ scripts/
 `user_weaknesses`：苦手度スコアはDBカラムには持たず `fail_count/(success_count+fail_count)` で算出する想定（フェーズ2-B以降で使用）。
 
 **段階2テーブルのRLS・権限（設定済み）**：
-- concepts・lesson_concepts：authenticatedはSELECT可、書き込みはservice_roleのみ
+- concepts・lesson_concepts：RLSポリシーは「authenticatedはSELECT可」として設定しているが、テーブルレベルの `GRANT SELECT TO authenticated` が付与されていないため、通常クライアントでは `42501 permission denied` になる。`api/ai-reviews/route.ts` では `createAdminClient()`（service_role）で取得している
 - user_weaknesses：本人のみSELECT可（`auth.uid() = user_id`）、書き込みはservice_roleのみ
 - 3テーブルともservice_roleにSELECT/INSERT/UPDATE/DELETEをGRANT済み
+
+> **注意（RLSとGRANTの関係）**：SupabaseではRLSポリシーを作成してもテーブルレベルのGRANTが別途必要。`GRANT SELECT ON public.lesson_concepts TO authenticated` 等がないと、ポリシーが存在してもpermission deniedになる。将来ユーザー画面で概念データを直接表示する場合はこのGRANTを追加すること（現状はAPIサーバー側のservice_role経由で問題なし）。
 
 **public.usersの自動作成（DBトリガー）**：auth.usersへのINSERT時にトリガー`on_auth_user_created`が発火し、`public.handle_new_user`関数がpublic.usersのレコードを自動作成する。メール登録・Google OAuthなど全ての登録経路で共通して動作する。nameは`raw_user_meta_data`の`full_name`→`name`→メールローカル部の順で取得。アプリ側（register/actions.ts等）にpublic.usersへのINSERTを書いてはならない（二重作成になる）。
 
