@@ -24,7 +24,7 @@ export default async function CourseLevelsPage({
 
   const [{ data: course }, { data: levels, error }] = await Promise.all([
     supabase.from('courses').select('title').eq('id', courseId).single(),
-    supabase.from('levels').select('id, title, order').eq('course_id', courseId).order('order', { ascending: true }),
+    supabase.from('levels').select('id, title, order').eq('course_id', courseId).eq('is_practice', false).order('order', { ascending: true }),
   ])
 
   if (error) {

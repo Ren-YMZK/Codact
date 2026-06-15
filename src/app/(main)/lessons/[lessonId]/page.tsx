@@ -30,7 +30,7 @@ export default async function LessonPage({
     nextResult,
     prevResult,
   ] = await Promise.all([
-    supabase.from('levels').select('id, order, course_id, concepts, built, next_preview, courses(language)').eq('id', lesson.level_id).single(),
+    supabase.from('levels').select('id, order, course_id, concepts, built, next_preview, is_practice, courses(language)').eq('id', lesson.level_id).single(),
     supabase
       .from('lessons')
       .select('id')
@@ -51,6 +51,8 @@ export default async function LessonPage({
 
   const nextLesson = nextResult.data
   const prevLesson = prevResult.data
+
+  const isPracticeLevel = (level as { is_practice?: boolean } | null)?.is_practice === true
 
   const isLastLesson = nextLesson === null
   const levelSummary = isLastLesson && level?.built ? {
@@ -79,11 +81,11 @@ export default async function LessonPage({
     <LessonClient
       lesson={lesson}
       language={language}
-      prevLessonId={prevLesson?.id ?? null}
-      nextLessonId={nextLesson?.id ?? null}
-      isLastLesson={isLastLesson}
-      levelSummary={levelSummary}
-      levelUrl={levelUrl}
+      prevLessonId={isPracticeLevel ? null : (prevLesson?.id ?? null)}
+      nextLessonId={isPracticeLevel ? null : (nextLesson?.id ?? null)}
+      isLastLesson={isPracticeLevel ? false : isLastLesson}
+      levelSummary={isPracticeLevel ? null : levelSummary}
+      levelUrl={isPracticeLevel ? '/dashboard' : levelUrl}
       initialCode={passedCode ?? lesson.initial_code}
       passedCode={passedCode}
     />
