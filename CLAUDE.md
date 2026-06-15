@@ -267,17 +267,21 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 ## AIレビュー
 
 ### フロー（`api/ai-reviews/route.ts`）
-1. ユーザー情報・提出情報を並列取得
+1. ユーザー情報・提出情報・**過去10件の提出履歴**を並列取得（段階1実装済み）
 2. adminでなければ月次リセット確認 → 残数チェック（超過なら403）
 3. Lesson→Level→Courseと辿り言語を取得（`extractLanguage`使用）
 4. 同コース・現Level以下の`concepts`を結合して学習済み概念を生成
-5. Claude API呼び出し（`claude-haiku-4-5`・max_tokens: 1024）
-6. adminは直接INSERT、通常ユーザーは`save_ai_review_and_increment` RPC
+5. 履歴を要約（各1行：Lesson名・合否・失敗時は通過件数と最初の失敗内容）してプロンプトに組み込む
+6. Claude API呼び出し（`claude-haiku-4-5`・max_tokens: 1024）
+7. adminは直接INSERT、通常ユーザーは`save_ai_review_and_increment` RPC
 
 ### プロンプトの特徴（両プロンプト共通）
-- `{language}`・`{learned_concepts}`・`{problem}`・`{code}` を埋め込み
-- **プロンプトインジェクション対策**: コードを`<user_code>`タグ、テスト結果を`<test_result>`タグで囲み、タグ内の指示を無視するよう明示
+- `{language}`・`{learned_concepts}`・`{problem}`・`{submission_history}`・`{code}` を埋め込み
+- **プロンプトインジェクション対策**: コードを`<user_code>`タグ、テスト結果を`<test_result>`タグ、履歴を`<submission_history>`タグで囲み、タグ内の指示を無視するよう明示
 - `{learned_concepts}`の範囲内でのみアドバイスする制約を指示
+- 失敗時：繰り返しパターンがあれば【修正ポイント】・【ヒント】に反映（パターンなければ言及しない）
+- 成功時：以前つまずいた概念をクリアしていれば【良い点】で成長を褒める（明確な成長がなければ言及しない）
+- 履歴0件（初回提出）の場合は `（履歴なし）` を埋め込み、従来どおり動作
 - プロンプト本文は`api/ai-reviews/route.ts`の`PROMPT_FAILED`・`PROMPT_PASSED`定数を参照
 
 ### 不合格時（PROMPT_FAILED）の出力形式
@@ -316,9 +320,9 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 
 ### 4段階ロードマップ
 
-**段階1：つまずき検出**（今あるデータで実現可能）
-- AIレビュー時に過去の提出履歴も渡し、「繰り返している弱点」を個人化して指摘する
-- 概念マスタ不要。現在のDBで実現可能な最初のステップ
+**段階1：つまずき検出**（✅ 実装済み）
+- AIレビュー時に過去10件の提出履歴を要約してプロンプトに渡し、「繰り返している弱点」を個人化して指摘する
+- 概念マスタ不要。既存DBのみで実現。`api/ai-reviews/route.ts` の `buildHistorySummary` で要約生成
 
 **段階2：弱点の構造化**
 - 概念マスタ（後述）を作り、提出ごとに「どの概念でつまずいたか」を判定
