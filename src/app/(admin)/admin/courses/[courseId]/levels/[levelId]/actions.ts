@@ -46,17 +46,22 @@ export async function addLesson(formData: FormData) {
   const courseId = formData.get('courseId') as string
   const levelId = formData.get('levelId') as string
   const hint = (formData.get('hint') as string).trim()
+  const conceptIds = formData.getAll('concept_ids') as string[]
   const admin = createAdminClient()
   const { data: maxRow } = await admin.from('lessons').select('order').eq('level_id', levelId).order('order', { ascending: false }).limit(1).single()
   const nextOrder = (maxRow?.order ?? 0) + 1
-  await admin.from('lessons').insert({
+  const { data: newLesson } = await admin.from('lessons').insert({
     level_id: levelId,
     title: formData.get('title') as string,
     content: formData.get('content') as string,
     initial_code: formData.get('initial_code') as string,
     hint: hint || null,
     order: nextOrder,
-  })
+  }).select('id').single()
+  if (newLesson && conceptIds.length > 0) {
+    const rows = conceptIds.map(cid => ({ lesson_id: newLesson.id, concept_id: cid }))
+    await admin.from('lesson_concepts').insert(rows)
+  }
   revalidatePath(levelPath(courseId, levelId))
 }
 
@@ -64,7 +69,9 @@ export async function updateLesson(formData: FormData) {
   await assertAdmin()
   const courseId = formData.get('courseId') as string
   const levelId = formData.get('levelId') as string
+  const lessonId = formData.get('id') as string
   const hint = (formData.get('hint') as string).trim()
+  const conceptIds = formData.getAll('concept_ids') as string[]
   const admin = createAdminClient()
   await admin.from('lessons').update({
     title: formData.get('title') as string,
@@ -72,7 +79,13 @@ export async function updateLesson(formData: FormData) {
     initial_code: formData.get('initial_code') as string,
     hint: hint || null,
     order: Number(formData.get('order')) || 0,
-  }).eq('id', formData.get('id') as string)
+  }).eq('id', lessonId)
+  // 差し替え方式：既存の紐づけを削除して選択分を再挿入
+  await admin.from('lesson_concepts').delete().eq('lesson_id', lessonId)
+  if (conceptIds.length > 0) {
+    const rows = conceptIds.map(cid => ({ lesson_id: lessonId, concept_id: cid }))
+    await admin.from('lesson_concepts').insert(rows)
+  }
   revalidatePath(levelPath(courseId, levelId))
 }
 

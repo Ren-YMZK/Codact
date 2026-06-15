@@ -83,3 +83,21 @@ export async function deleteLevel(formData: FormData) {
   await admin.from('levels').delete().eq('id', formData.get('id') as string)
   revalidatePath(`/admin/courses/${courseId}`)
 }
+
+export async function addPracticeLevel(formData: FormData) {
+  await assertAdmin()
+  const courseId = formData.get('courseId') as string
+  const admin = createAdminClient()
+  const { data: maxRow } = await admin.from('levels').select('order').eq('course_id', courseId).order('order', { ascending: false }).limit(1).single()
+  const nextOrder = (maxRow?.order ?? 0) + 1
+  await admin.from('levels').insert({
+    course_id: courseId,
+    title: '補習問題',
+    concepts: [],
+    built: null,
+    next_preview: null,
+    order: nextOrder,
+    is_practice: true,
+  })
+  revalidatePath(`/admin/courses/${courseId}`)
+}

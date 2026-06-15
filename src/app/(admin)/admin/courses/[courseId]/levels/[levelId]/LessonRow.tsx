@@ -14,16 +14,30 @@ interface Lesson {
   order: number
 }
 
+interface ConceptRow {
+  id: string
+  name: string
+  category: string | null
+}
+
 interface Props {
   lesson: Lesson
   courseId: string
   levelId: string
   isFirst: boolean
   isLast: boolean
+  concepts: ConceptRow[]
+  selectedConceptIds: string[]
 }
 
-export function LessonRow({ lesson, courseId, levelId, isFirst, isLast }: Props) {
+export function LessonRow({ lesson, courseId, levelId, isFirst, isLast, concepts, selectedConceptIds }: Props) {
   const [editing, setEditing] = useState(false)
+
+  const conceptsByCategory = concepts.reduce<Map<string, ConceptRow[]>>((acc, c) => {
+    const cat = c.category ?? 'その他'
+    acc.set(cat, [...(acc.get(cat) ?? []), c])
+    return acc
+  }, new Map())
 
   return (
     <>
@@ -103,6 +117,33 @@ export function LessonRow({ lesson, courseId, levelId, isFirst, isLast }: Props)
                 <label className="block text-xs font-medium text-gray-600 mb-1">ヒント</label>
                 <textarea name="hint" rows={2} defaultValue={lesson.hint ?? ''} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
               </div>
+              {/* 関連概念セレクタ */}
+              {conceptsByCategory.size > 0 && (
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-2">関連概念</label>
+                  <div className="space-y-3">
+                    {[...conceptsByCategory.entries()].map(([category, items]) => (
+                      <div key={category}>
+                        <p className="text-xs text-gray-400 mb-1">{category}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                          {items.map(c => (
+                            <label key={c.id} className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                name="concept_ids"
+                                value={c.id}
+                                defaultChecked={selectedConceptIds.includes(c.id)}
+                                className="accent-blue-600"
+                              />
+                              {c.name}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">order</label>
                 <input name="order" type="number" defaultValue={lesson.order} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />

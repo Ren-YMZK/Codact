@@ -6,6 +6,12 @@ import { LessonRow } from './LessonRow'
 import { TestCaseRow } from './TestCaseRow'
 import { Button } from '@/components/ui/Button'
 
+interface ConceptRow {
+  id: string
+  name: string
+  category: string | null
+}
+
 export default async function AdminLevelPage({
   params,
 }: {
@@ -14,17 +20,40 @@ export default async function AdminLevelPage({
   const { courseId, levelId } = await params
   const admin = createAdminClient()
 
-  const [{ data: course }, { data: level }, { data: lessons }, { data: testCases }] = await Promise.all([
+  const [{ data: course }, { data: level }, { data: lessons }, { data: testCases }, { data: allConcepts }] = await Promise.all([
     admin.from('courses').select('id, title').eq('id', courseId).single(),
     admin.from('levels').select('id, title').eq('id', levelId).single(),
     admin.from('lessons').select('id, title, content, initial_code, hint, order').eq('level_id', levelId).order('order', { ascending: true }),
     admin.from('test_cases').select('id, lesson_id, input, expected, order').order('order', { ascending: true }),
+    admin.from('concepts').select('id, name, category').order('category'),
   ])
 
   if (!course || !level) notFound()
 
-  const lessonIds = new Set(lessons?.map((l) => l.id) ?? [])
-  const filteredTestCases = testCases?.filter((tc) => lessonIds.has(tc.lesson_id)) ?? []
+  const lessonIdList = (lessons ?? []).map(l => l.id)
+  const lessonIdSet = new Set(lessonIdList)
+  const filteredTestCases = (testCases ?? []).filter((tc) => lessonIdSet.has(tc.lesson_id))
+
+  // Lesson×概念の紐づけを取得（lesson_conceptsはservice_role必須）
+  const { data: lessonConceptsData } = lessonIdList.length > 0
+    ? await admin.from('lesson_concepts').select('lesson_id, concept_id').in('lesson_id', lessonIdList)
+    : { data: [] as { lesson_id: string; concept_id: string }[] }
+
+  const lessonConceptMap = new Map<string, string[]>()
+  for (const lc of lessonConceptsData ?? []) {
+    const existing = lessonConceptMap.get(lc.lesson_id) ?? []
+    existing.push(lc.concept_id)
+    lessonConceptMap.set(lc.lesson_id, existing)
+  }
+
+  const conceptRows = (allConcepts ?? []) as ConceptRow[]
+
+  // カテゴリ → 概念[] のマップ（追加フォーム描画用）
+  const conceptsByCategory = conceptRows.reduce<Map<string, ConceptRow[]>>((acc, c) => {
+    const cat = c.category ?? 'その他'
+    acc.set(cat, [...(acc.get(cat) ?? []), c])
+    return acc
+  }, new Map())
 
   return (
     <div className="space-y-8">
@@ -50,14 +79,16 @@ export default async function AdminLevelPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {lessons?.map((lesson, index) => (
+            {(lessons ?? []).map((lesson, index) => (
               <LessonRow
                 key={lesson.id}
                 lesson={lesson}
                 courseId={courseId}
                 levelId={levelId}
                 isFirst={index === 0}
-                isLast={index === (lessons.length - 1)}
+                isLast={index === ((lessons ?? []).length - 1)}
+                concepts={conceptRows}
+                selectedConceptIds={lessonConceptMap.get(lesson.id) ?? []}
               />
             ))}
             {(!lessons || lessons.length === 0) && (
@@ -91,6 +122,27 @@ export default async function AdminLevelPage({
             <label className="block text-xs font-medium text-gray-600 mb-1">ヒント</label>
             <textarea name="hint" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900" />
           </div>
+          {/* 関連概念セレクタ */}
+          {conceptsByCategory.size > 0 && (
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-2">関連概念</label>
+              <div className="space-y-3">
+                {[...conceptsByCategory.entries()].map(([category, items]) => (
+                  <div key={category}>
+                    <p className="text-xs text-gray-400 mb-1">{category}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                      {items.map(c => (
+                        <label key={c.id} className="flex items-center gap-1 text-xs text-gray-700 cursor-pointer select-none">
+                          <input type="checkbox" name="concept_ids" value={c.id} className="accent-blue-600" />
+                          {c.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="col-span-2">
             <Button type="submit">追加</Button>
           </div>
