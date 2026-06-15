@@ -280,13 +280,16 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 ## AIレビュー
 
 ### フロー（`api/ai-reviews/route.ts`）
-1. ユーザー情報・提出情報・**過去10件の提出履歴**を並列取得（段階1実装済み）
+1. ユーザー情報・提出情報・**過去10件の提出履歴**を並列取得
 2. adminでなければ月次リセット確認 → 残数チェック（超過なら403）
-3. Lesson→Level→Courseと辿り言語を取得（`extractLanguage`使用）
+3. Lesson情報（content/level/language）と **lesson_concepts（id+name）** を並列取得
 4. 同コース・現Level以下の`concepts`を結合して学習済み概念を生成
-5. 履歴を要約（各1行：Lesson名・合否・失敗時は通過件数と最初の失敗内容）してプロンプトに組み込む
-6. Claude API呼び出し（`claude-haiku-4-5`・max_tokens: 1024）
-7. adminは直接INSERT、通常ユーザーは`save_ai_review_and_increment` RPC
+5. 履歴を要約してプロンプトに組み込む
+6. **失敗時かつ概念が紐づくLessonの場合**：プロンプト末尾に概念リストと `<weak_concepts>` 出力指示を付加
+7. Claude API呼び出し（`claude-haiku-4-5`・max_tokens: 1024）
+8. 失敗時：`extractWeakConcepts()` で `<weak_concepts>` タグを抽出・除去。cleanText をDB保存・返却に使用
+9. adminは直接INSERT、通常ユーザーは`save_ai_review_and_increment` RPC
+10. **弱点プロファイル更新**（`updateUserWeaknesses()`・非クリティカル）：概念が紐づくLessonのみ実行。失敗してもレビュー機能は継続、エラーはSentryに記録
 
 ### プロンプトの特徴（両プロンプト共通）
 - `{language}`・`{learned_concepts}`・`{problem}`・`{submission_history}`・`{code}` を埋め込み
@@ -296,6 +299,7 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - 成功時：以前つまずいた概念をクリアしていれば【良い点】で成長を褒める（明確な成長がなければ言及しない）
 - 履歴0件（初回提出）の場合は `（履歴なし）` を埋め込み、従来どおり動作
 - プロンプト本文は`api/ai-reviews/route.ts`の`PROMPT_FAILED`・`PROMPT_PASSED`定数を参照
+- **PROMPT_FAILEDのみ・概念紐づきLessonのみ**：定数末尾に動的に概念リスト＋`<weak_concepts>["id"]</weak_concepts>`出力指示を付加。このタグはユーザーには見せず、サーバー側で正規表現抽出後に除去する
 
 ### 不合格時（PROMPT_FAILED）の出力形式
 ```
@@ -337,9 +341,9 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - AIレビュー時に過去10件の提出履歴を要約してプロンプトに渡し、「繰り返している弱点」を個人化して指摘する
 - 概念マスタ不要。既存DBのみで実現。`api/ai-reviews/route.ts` の `buildHistorySummary` で要約生成
 
-**段階2：弱点の構造化**（フェーズ2-A ✅ 実装済み・フェーズ2-B 未実装）
+**段階2：弱点の構造化**（✅ 実装済み）
 - **フェーズ2-A（データ基盤）**：concepts/lesson_concepts/user_weaknesses テーブルを作成。36概念マスタを投入し、`scripts/assign-concepts.ts` で128 Lessonに443件の概念を紐づけ済み
-- **フェーズ2-B（つまずき判定）**：提出失敗時にAIが「どの概念でつまずいたか」を概念マスタから判定し、`user_weaknesses` の success_count/fail_count を更新する（未実装）
+- **フェーズ2-B（つまずき判定）**：AIレビュー時に失敗提出のみ `<weak_concepts>` タグで概念を判定。成功時は全概念の success_count +1、失敗時はAI判定概念の fail_count +1 を `user_weaknesses` にupsert。`updateUserWeaknesses()` 関数が `api/ai-reviews/route.ts` に実装済み
 
 **段階3：個別推薦**
 - 弱点プロファイルと各LessonのConceptsタグを照合

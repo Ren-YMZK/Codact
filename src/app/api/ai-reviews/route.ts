@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { anthropic } from '@/lib/anthropic'
 import { getPlanLimit, applyMonthlyResetIfNeeded } from '@/lib/aiReview'
 import { extractLanguage } from '@/lib/supabaseHelpers'
@@ -20,6 +21,17 @@ type HistoryRow = {
   status: string
   test_result: unknown
   lessons: unknown
+}
+
+type LessonConceptRow = {
+  concept_id: string
+  concepts: { id: string; name: string } | Array<{ id: string; name: string }> | null
+}
+
+interface WeaknessRecord {
+  concept_id: string
+  success_count: number
+  fail_count: number
 }
 
 function extractLessonTitle(val: unknown): string {
@@ -51,6 +63,81 @@ function buildHistorySummary(history: HistoryRow[]): string {
     }
     return line
   }).join('\n')
+}
+
+function extractConceptName(val: unknown): string {
+  if (Array.isArray(val)) {
+    const first = val[0]
+    return first && typeof first === 'object'
+      ? String((first as Record<string, unknown>).name ?? '')
+      : ''
+  }
+  if (val && typeof val === 'object') {
+    return String((val as Record<string, unknown>).name ?? '')
+  }
+  return ''
+}
+
+function extractWeakConcepts(
+  text: string,
+  validIds: Set<string>,
+): { cleanText: string; weakConceptIds: string[] } {
+  const tagMatch = text.match(/<weak_concepts>([\s\S]*?)<\/weak_concepts>/)
+  const cleanText = text.replace(/<weak_concepts>[\s\S]*?<\/weak_concepts>/g, '').trim()
+  if (!tagMatch) return { cleanText, weakConceptIds: [] }
+  try {
+    const parsed: unknown = JSON.parse(tagMatch[1].trim())
+    if (!Array.isArray(parsed)) return { cleanText, weakConceptIds: [] }
+    const weakConceptIds = parsed.filter(
+      (id): id is string => typeof id === 'string' && validIds.has(id),
+    )
+    return { cleanText, weakConceptIds }
+  } catch {
+    return { cleanText, weakConceptIds: [] }
+  }
+}
+
+async function updateUserWeaknesses(
+  userId: string,
+  allConceptIds: string[],
+  weakConceptIds: string[],
+  isPassed: boolean,
+): Promise<void> {
+  const conceptsToUpdate = isPassed ? allConceptIds : weakConceptIds
+  if (conceptsToUpdate.length === 0) return
+
+  const admin = createAdminClient()
+
+  // 現在値をバッチ取得
+  const { data: existing } = await admin
+    .from('user_weaknesses')
+    .select('concept_id, success_count, fail_count')
+    .eq('user_id', userId)
+    .in('concept_id', conceptsToUpdate)
+
+  const existingMap = new Map<string, WeaknessRecord>(
+    ((existing ?? []) as WeaknessRecord[]).map(r => [r.concept_id, r]),
+  )
+
+  // 加算後の絶対値でバッチ upsert
+  const rows = conceptsToUpdate.map(cid => {
+    const current = existingMap.get(cid)
+    return {
+      user_id: userId,
+      concept_id: cid,
+      success_count: (current?.success_count ?? 0) + (isPassed ? 1 : 0),
+      fail_count: (current?.fail_count ?? 0) + (isPassed ? 0 : 1),
+      updated_at: new Date().toISOString(),
+    }
+  })
+
+  const { error } = await admin
+    .from('user_weaknesses')
+    .upsert(rows, { onConflict: 'user_id,concept_id' })
+
+  if (error) {
+    Sentry.captureException(error)
+  }
 }
 
 // ---- プロンプト定数 ----
@@ -219,21 +306,41 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Lesson + Level + Language を1クエリで取得
-  const { data: lessonFull, error: lessonError } = await supabase
+  // Lesson本体はユーザー権限で取得
+  const lessonResult = await supabase
     .from('lessons')
     .select('content, levels(order, course_id, courses(language))')
     .eq('id', submission.lesson_id)
     .single()
 
-  if (lessonError || !lessonFull) {
+  if (lessonResult.error || !lessonResult.data) {
     return NextResponse.json({ error: 'Lesson情報の取得に失敗しました' }, { status: 404 })
   }
+
+  const lessonFull = lessonResult.data
 
   // levels は object か array の可能性があるため安全に取得
   const levelRaw = Array.isArray(lessonFull.levels) ? lessonFull.levels[0] : lessonFull.levels
   const level = levelRaw as { order: number; course_id: string; courses: unknown } | null | undefined
   const language = extractLanguage(level?.courses)
+
+  // このLessonに紐づく概念（マスタデータのため service_role で取得）
+  const adminClient = createAdminClient()
+  const lessonConceptsResult = await adminClient
+    .from('lesson_concepts')
+    .select('concept_id, concepts(id, name)')
+    .eq('lesson_id', submission.lesson_id)
+
+  if (lessonConceptsResult.error) {
+    Sentry.captureException(lessonConceptsResult.error)
+  }
+  const lessonConceptRows = (lessonConceptsResult.data ?? []) as LessonConceptRow[]
+  const lessonConcepts = lessonConceptRows.map(r => ({
+    id: r.concept_id,
+    name: extractConceptName(r.concepts),
+  }))
+  const lessonConceptIds = lessonConcepts.map(c => c.id)
+  const lessonConceptIdSet = new Set(lessonConceptIds)
 
   // 学習済み概念を取得（同コース内の現在Level以下の全concepts）
   let learnedConcepts = '（概念情報なし）'
@@ -255,30 +362,47 @@ export async function POST(request: NextRequest) {
     ? '全テストケースに合格しました'
     : JSON.stringify(submission.test_result, null, 2)
 
-  const prompt = isPassed
-    ? PROMPT_PASSED
-        .replace('{language}', language)
-        .replace('{learned_concepts}', learnedConcepts)
-        .replace('{problem}', lessonFull.content)
-        .replace('{submission_history}', historySummary)
-        .replace('{code}', submission.code)
-    : PROMPT_FAILED
-        .replace('{language}', language)
-        .replace('{learned_concepts}', learnedConcepts)
-        .replace('{problem}', lessonFull.content)
-        .replace('{submission_history}', historySummary)
-        .replace('{test_result}', testResultText)
-        .replace('{code}', submission.code)
+  let prompt: string
+  if (isPassed) {
+    prompt = PROMPT_PASSED
+      .replace('{language}', language)
+      .replace('{learned_concepts}', learnedConcepts)
+      .replace('{problem}', lessonFull.content)
+      .replace('{submission_history}', historySummary)
+      .replace('{code}', submission.code)
+  } else {
+    prompt = PROMPT_FAILED
+      .replace('{language}', language)
+      .replace('{learned_concepts}', learnedConcepts)
+      .replace('{problem}', lessonFull.content)
+      .replace('{submission_history}', historySummary)
+      .replace('{test_result}', testResultText)
+      .replace('{code}', submission.code)
+    // 失敗時のみ：Lessonに概念が紐づいていれば概念判定セクションを末尾に付加
+    if (lessonConceptIds.length > 0) {
+      const conceptList = lessonConcepts.map(c => `- ${c.id}: ${c.name}`).join('\n')
+      prompt += `\n\n# このLessonに紐づく学習概念\n${conceptList}\n\n# 追加出力（必須）\nレビュー本文の末尾に、今回の提出でつまずいていると思われる概念のIDを以下の形式で出力すること。つまずきがない・判定できない場合は空配列にすること。タグ内以外に概念IDは書かない。\n<weak_concepts>["概念ID1", "概念ID2"]</weak_concepts>`
+    }
+  }
 
   // Claude API呼び出し
   let review: string
+  let weakConceptIds: string[] = []
   try {
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     })
-    review = message.content[0].type === 'text' ? message.content[0].text : ''
+    const rawText = message.content[0].type === 'text' ? message.content[0].text : ''
+    // 失敗時かつ概念が紐づいている場合のみ weak_concepts タグを抽出・除去
+    if (!isPassed && lessonConceptIds.length > 0) {
+      const extracted = extractWeakConcepts(rawText, lessonConceptIdSet)
+      review = extracted.cleanText
+      weakConceptIds = extracted.weakConceptIds
+    } else {
+      review = rawText
+    }
   } catch (error) {
     Sentry.captureException(error)
     return NextResponse.json({ error: 'AIレビューの生成に失敗しました' }, { status: 503 })
@@ -300,6 +424,15 @@ export async function POST(request: NextRequest) {
     })
     if (rpcError) {
       return NextResponse.json({ error: rpcError.message }, { status: 500 })
+    }
+  }
+
+  // 弱点プロファイル更新（非クリティカル・レビュー保存の成否とは独立）
+  if (lessonConceptIds.length > 0) {
+    try {
+      await updateUserWeaknesses(user.id, lessonConceptIds, weakConceptIds, isPassed)
+    } catch (err) {
+      Sentry.captureException(err)
     }
   }
 
