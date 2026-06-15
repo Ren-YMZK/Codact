@@ -11,6 +11,7 @@ export interface WeakConceptStat {
   category: string
   rate: number
   reviewLesson: { id: string; title: string } | null
+  isPractice: boolean
 }
 
 interface Props {
@@ -88,7 +89,9 @@ export function ConceptMap({ categories, weakConcepts }: Props) {
                       href={`/lessons/${w.reviewLesson.id}`}
                       className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      「{w.reviewLesson.title}」を復習する →
+                      {w.isPractice
+                        ? '補習問題を解く →'
+                        : `「${w.reviewLesson.title}」を復習する →`}
                     </Link>
                   </div>
                 )}

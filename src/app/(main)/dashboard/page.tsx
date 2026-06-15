@@ -37,6 +37,15 @@ interface ConceptRow {
 interface LessonConceptRow {
   lesson_id: string
   concept_id: string
+  lessons: {
+    id: string
+    title: string
+    levels: { is_practice: boolean } | Array<{ is_practice: boolean }> | null
+  } | Array<{
+    id: string
+    title: string
+    levels: { is_practice: boolean } | Array<{ is_practice: boolean }> | null
+  }> | null
 }
 
 export default async function DashboardPage() {
@@ -81,10 +90,10 @@ export default async function DashboardPage() {
       .from('concepts')
       .select('id, name, category')
       .order('category'),
-    // 全Lesson×概念の対応表（復習Lesson特定に使用・admin で取得）
+    // 全Lesson×概念の対応表（補習Lesson判定のためlevels(is_practice)をJOIN・admin で取得）
     admin
       .from('lesson_concepts')
-      .select('lesson_id, concept_id'),
+      .select('lesson_id, concept_id, lessons(id, title, levels(is_practice))'),
   ])
 
   const courses = (summaryResult.data ?? []) as CourseSummaryRow[]
@@ -141,32 +150,65 @@ export default async function DashboardPage() {
         category: c.category ?? 'その他',
         rate: total > 0 ? w.success_count / total : 0,
         reviewLesson: null,
+        isPractice: false,
       }
     })
     .sort((a, b) => a.rate - b.rate)
     .slice(0, 5)
 
-  // 弱点概念ごとに「最新の失敗Lesson」を特定
+  // 弱点概念ごとに「補習Lesson（優先）または最新の失敗Lesson（フォールバック）」を特定
   const allLessonConceptRows = (allLessonConceptsResult.data ?? []) as LessonConceptRow[]
 
-  // concept_id → lesson_id[] のマップ
-  const conceptToLessonIds = new Map<string, string[]>()
-  for (const row of allLessonConceptRows) {
-    const existing = conceptToLessonIds.get(row.concept_id) ?? []
-    existing.push(row.lesson_id)
-    conceptToLessonIds.set(row.concept_id, existing)
+  // nested JOINのobject/array二重性を吸収してlesson情報を抽出
+  function extractLessonInfo(raw: unknown): { id: string; title: string; is_practice: boolean } | null {
+    const lesson = Array.isArray(raw) ? raw[0] : raw
+    if (!lesson || typeof lesson !== 'object') return null
+    const l = lesson as Record<string, unknown>
+    const levelsRaw = l.levels
+    const level = Array.isArray(levelsRaw) ? levelsRaw[0] : levelsRaw
+    const is_practice = level && typeof level === 'object'
+      ? Boolean((level as Record<string, unknown>).is_practice)
+      : false
+    return { id: String(l.id ?? ''), title: String(l.title ?? ''), is_practice }
   }
 
-  // 弱点概念に紐づく全 lesson_id を収集
+  // concept_id → 補習Lesson（最初の1件）
+  const conceptToPracticeLesson = new Map<string, { id: string; title: string }>()
+  // concept_id → 通常Lessonのlesson_id[]（Phase2フォールバック用）
+  const conceptToLessonIds = new Map<string, string[]>()
+
+  for (const row of allLessonConceptRows) {
+    const info = extractLessonInfo(row.lessons)
+    if (!info || !info.id) continue
+    if (info.is_practice) {
+      if (!conceptToPracticeLesson.has(row.concept_id)) {
+        conceptToPracticeLesson.set(row.concept_id, { id: info.id, title: info.title })
+      }
+    } else {
+      const existing = conceptToLessonIds.get(row.concept_id) ?? []
+      existing.push(row.lesson_id)
+      conceptToLessonIds.set(row.concept_id, existing)
+    }
+  }
+
+  // weakConceptsBase に補習Lesson優先でreviewLessonをセット
+  const weakConceptsWithPractice: WeakConceptStat[] = weakConceptsBase.map(wc => {
+    const practiceLesson = conceptToPracticeLesson.get(wc.conceptId)
+    return practiceLesson
+      ? { ...wc, reviewLesson: practiceLesson, isPractice: true }
+      : { ...wc, reviewLesson: null, isPractice: false }
+  })
+
+  // フェーズ2: 補習Lessonが無い概念のみ失敗Lessonをフォールバックで探す
   const weakLessonIdSet = new Set<string>()
-  for (const wc of weakConceptsBase) {
+  for (const wc of weakConceptsWithPractice) {
+    if (wc.isPractice) continue
     for (const lessonId of conceptToLessonIds.get(wc.conceptId) ?? []) {
       weakLessonIdSet.add(lessonId)
     }
   }
   const weakLessonIds = [...weakLessonIdSet]
 
-  // フェーズ2: 弱点Lessonへの失敗提出を取得（created_at DESC で最新順）
   type FailedSubRow = { lesson_id: string; lesson_title: string }
   let failedSubList: FailedSubRow[] = []
   if (weakLessonIds.length > 0) {
@@ -187,8 +229,9 @@ export default async function DashboardPage() {
     })
   }
 
-  // 弱点概念ごとに最新の失敗Lessonを付与
-  const weakConcepts: WeakConceptStat[] = weakConceptsBase.map(wc => {
+  // 補習Lessonなし概念にフォールバックの失敗Lessonを付与
+  const weakConcepts: WeakConceptStat[] = weakConceptsWithPractice.map(wc => {
+    if (wc.isPractice) return wc
     const lessonIdSet = new Set(conceptToLessonIds.get(wc.conceptId) ?? [])
     // failedSubList は created_at DESC 順なので最初のマッチが最新
     const match = failedSubList.find(sub => lessonIdSet.has(sub.lesson_id))

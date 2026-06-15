@@ -462,7 +462,7 @@ export default function LessonClient({
                       {passedMessage(result.test_result.length)}
                     </p>
                   </div>
-                  {!isLastLesson ? (
+                  {nextLessonId ? (
                     <Button variant="success" size="sm" href={`/lessons/${nextLessonId}`}>
                       次のLessonへ
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -471,7 +471,7 @@ export default function LessonClient({
                     </Button>
                   ) : (
                     <Button variant="success" size="sm" href={levelUrl}>
-                      Levelクリア！一覧へ
+                      {isLastLesson ? 'Levelクリア！一覧へ' : 'ダッシュボードへ戻る'}
                     </Button>
                   )}
                 </div>
