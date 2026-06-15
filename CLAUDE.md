@@ -99,6 +99,8 @@ src/
 │   └── supabaseHelpers.ts（PostgRESTのobject/array両対応型ガード）
 ├── instrumentation.ts    （Sentry初期化）
 └── proxy.ts
+scripts/
+└── assign-concepts.ts    （全LessonへのClaude API概念自動紐づけ・一発スクリプト）
 ```
 
 ---
@@ -115,10 +117,21 @@ src/
 | ai_reviews | id・user_id・submission_id・review・created_at |
 | progress | id・user_id・lesson_id・status(not_started/in_progress/completed)・completed_at |
 | test_cases | id・lesson_id・input・expected・order |
+| concepts | id(text PK)・name・category(text)・created_at |
+| lesson_concepts | lesson_id(→lessons CASCADE)・concept_id(→concepts CASCADE)・複合PK |
+| user_weaknesses | user_id(→users CASCADE)・concept_id(→concepts CASCADE)・success_count・fail_count・updated_at・複合PK |
 
 `users.role`：CHECK制約あり（'user'/'vip'/'admin'のみ許可）。新しいroleを追加する場合は制約の作り直しが必要。
 `levels.concepts`：そのLevelで学ぶ概念一覧（AIレビューの制約生成に使用）
 `levels.built`・`levels.next_preview`：Level完了画面のサマリー表示に使用
+`concepts`：36概念を投入済み（10カテゴリ：出力/変数・型/文字列操作/数値・演算/配列・リスト/条件分岐/ループ/関数/オブジェクト/クラス/エラー処理）。text型のため将来のカテゴリ追加・コース拡張に対応可能。
+`lesson_concepts`：`scripts/assign-concepts.ts`でClaude API（claude-haiku-4-5）を使い128 Lessonに計443件の紐づけ済み（座学2 LessonはスキップでOK）。スクリプトはON CONFLICT DO NOTHINGで重複安全・再実行可能。
+`user_weaknesses`：苦手度スコアはDBカラムには持たず `fail_count/(success_count+fail_count)` で算出する想定（フェーズ2-B以降で使用）。
+
+**段階2テーブルのRLS・権限（設定済み）**：
+- concepts・lesson_concepts：authenticatedはSELECT可、書き込みはservice_roleのみ
+- user_weaknesses：本人のみSELECT可（`auth.uid() = user_id`）、書き込みはservice_roleのみ
+- 3テーブルともservice_roleにSELECT/INSERT/UPDATE/DELETEをGRANT済み
 
 **public.usersの自動作成（DBトリガー）**：auth.usersへのINSERT時にトリガー`on_auth_user_created`が発火し、`public.handle_new_user`関数がpublic.usersのレコードを自動作成する。メール登録・Google OAuthなど全ての登録経路で共通して動作する。nameは`raw_user_meta_data`の`full_name`→`name`→メールローカル部の順で取得。アプリ側（register/actions.ts等）にpublic.usersへのINSERTを書いてはならない（二重作成になる）。
 
@@ -308,9 +321,9 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 
 ---
 
-## AIメンター進化ロードマップ（構想・未実装）
+## AIメンター進化ロードマップ
 
-> **注意：このセクションはすべて未実装の構想・中長期ロードマップです。現在の実装とは無関係です。**
+> **注意：段階1・段階2フェーズ2-Aは実装済み。段階2フェーズ2-B以降は構想・未実装。**
 
 ### 背景・競合優位性
 
@@ -324,9 +337,9 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - AIレビュー時に過去10件の提出履歴を要約してプロンプトに渡し、「繰り返している弱点」を個人化して指摘する
 - 概念マスタ不要。既存DBのみで実現。`api/ai-reviews/route.ts` の `buildHistorySummary` で要約生成
 
-**段階2：弱点の構造化**
-- 概念マスタ（後述）を作り、提出ごとに「どの概念でつまずいたか」を判定
-- ユーザーごとの弱点プロファイルとして蓄積する
+**段階2：弱点の構造化**（フェーズ2-A ✅ 実装済み・フェーズ2-B 未実装）
+- **フェーズ2-A（データ基盤）**：concepts/lesson_concepts/user_weaknesses テーブルを作成。36概念マスタを投入し、`scripts/assign-concepts.ts` で128 Lessonに443件の概念を紐づけ済み
+- **フェーズ2-B（つまずき判定）**：提出失敗時にAIが「どの概念でつまずいたか」を概念マスタから判定し、`user_weaknesses` の success_count/fail_count を更新する（未実装）
 
 **段階3：個別推薦**
 - 弱点プロファイルと各LessonのConceptsタグを照合
@@ -338,24 +351,25 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 
 各段階は単独でも価値を出しつつ次段階の土台になる。段階1から順に実装する。
 
-### 概念マスタ設計（段階2で実装予定・現時点では未実装）
+### 概念マスタ設計（✅ フェーズ2-A 実装済み）
 
 **目的**：弱点を細かい粒度で言語横断的に追跡するための共通語彙。
 
 **現状の課題**：`levels.concepts` はテキスト配列で表記揺れがある（例：`return` と `returnによる戻り値` が別物として存在）。これを共通IDに名寄せする。
 
 **構造（2階層）**：
-- 大分類（`category`）：ループ・条件分岐・関数・クラス・エラー処理 等
+- 大分類（`category`）：出力/変数・型/文字列操作/数値・演算/配列・リスト/条件分岐/ループ/関数/オブジェクト/クラス/エラー処理（10カテゴリ）
   - enumではなくtextで持ち、コース追加時に新カテゴリを足せるようにする
   - 将来の拡張例：React→「状態管理」、AWS→「権限」等
-- 小分類（`concept`）：`for...of`・`return`・`constructor` 等の具体概念。約36個から開始
+- 小分類（`concept`）：36概念を投入済み。概念は増え続ける前提
 
-**DB設計案**：
-- `concepts` マスタテーブル（`concept_id`, `name`, `category`）
-- `lesson_concepts` 中間テーブル（lessonと概念の多対多）
+**DB設計（実装済み）**：
+- `concepts` マスタテーブル（`id`(text PK), `name`, `category`）
+- `lesson_concepts` 中間テーブル（lessonと概念の多対多・128 Lesson/443件紐づけ済み）
+- `user_weaknesses` テーブル（user_id・concept_id・success_count・fail_count・updated_at）
 - 既存の `levels.concepts`（表示用テキスト配列）は当面残す
 
-概念は増え続ける前提。マスタ管理によりコースが増えても表記揺れなく拡張できることが設計の肝。
+マスタ管理によりコースが増えても表記揺れなく拡張できることが設計の肝。
 
 ### スケール思想
 
