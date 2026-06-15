@@ -111,7 +111,7 @@ scripts/
 |---|---|
 | users | id・email・name・plan(free/paid)・role(user/vip/admin)・ai_review_count・ai_review_reset_at・stripe_customer_id・has_seen_welcome・created_at |
 | courses | id・title・language・description・order |
-| levels | id・course_id・title・order・concepts（text[]）・built・next_preview |
+| levels | id・course_id・title・order・concepts（text[]）・built・next_preview・is_practice(boolean, NOT NULL, default false) |
 | lessons | id・level_id・title・content・initial_code・hint・order |
 | submissions | id・user_id・lesson_id・code・status(passed/failed)・test_result・created_at |
 | ai_reviews | id・user_id・submission_id・review・created_at |
@@ -124,6 +124,7 @@ scripts/
 `users.role`：CHECK制約あり（'user'/'vip'/'admin'のみ許可）。新しいroleを追加する場合は制約の作り直しが必要。
 `levels.concepts`：そのLevelで学ぶ概念一覧（AIレビューの制約生成に使用）
 `levels.built`・`levels.next_preview`：Level完了画面のサマリー表示に使用
+`levels.is_practice`：`true` の Level は補習Level（弱点克服用の補習問題置き場）。ユーザー向けLevel一覧・進捗集計から除外される。コースに1つだけ作成する運用。
 `concepts`：36概念を投入済み（10カテゴリ：出力/変数・型/文字列操作/数値・演算/配列・リスト/条件分岐/ループ/関数/オブジェクト/クラス/エラー処理）。text型のため将来のカテゴリ追加・コース拡張に対応可能。
 `lesson_concepts`：`scripts/assign-concepts.ts`でClaude API（claude-haiku-4-5）を使い128 Lessonに計443件の紐づけ済み（座学2 LessonはスキップでOK）。スクリプトはON CONFLICT DO NOTHINGで重複安全・再実行可能。
 `user_weaknesses`：苦手度スコアはDBカラムには持たず `fail_count/(success_count+fail_count)` で算出する想定（フェーズ2-B以降で使用）。
@@ -146,7 +147,7 @@ scripts/
 | 関数 | 用途 | 備考 |
 |---|---|---|
 | `save_ai_review_and_increment(p_user_id, p_submission_id, p_review)` | ai_reviewsへの挿入とai_review_countの加算をアトミックに実行 | 通常ユーザーのみ使用（adminはスキップ） |
-| `get_course_progress_summary(p_user_id)` | ダッシュボードのコース別集計（total_lessons・completed_lessons） | ユーザーRLS内 |
+| `get_course_progress_summary(p_user_id)` | ダッシュボードのコース別集計（total_lessons・completed_lessons） | ユーザーRLS内・**levels JOIN のON句に `is_practice=false` を追加済み**（補習Lessonを集計から除外） |
 | `get_admin_stats_summary()` | 統計サマリー（ユーザー数・提出数等） | **admin除外済み** |
 | `get_admin_lesson_stats()` | Lesson別統計（course_started_users含む） | **admin除外済み** |
 | `get_admin_user_stats()` | ユーザー別統計（LIMIT 100・登録日降順） | **admin除外済み** |
@@ -213,8 +214,8 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 | /admin/courses | コース一覧・追加・編集・削除 |
 | /admin/stats | 統計ダッシュボード（サマリー・Lesson別進捗・ユーザー別一覧） |
 | /admin/users | ユーザー管理（VIPロール付与・解除・アカウント削除） |
-| /admin/courses/[courseId] | Level一覧・追加・編集・削除・順番変更 |
-| /admin/courses/[courseId]/levels/[levelId] | Lesson一覧・追加・編集・削除・順番変更・テストケース管理 |
+| /admin/courses/[courseId] | Level一覧・追加・編集・削除・順番変更・補習Level作成 |
+| /admin/courses/[courseId]/levels/[levelId] | Lesson一覧・追加・編集・削除・順番変更・テストケース管理・概念紐づけ |
 
 - 管理者判定: usersテーブルの`role = 'admin'`
 - データ操作: Server Actions + `createAdminClient()`（RLSバイパス）
@@ -234,6 +235,21 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
   - ai_reviewsの`submission_id`外部キー → ON DELETE CASCADE（submissions削除で連鎖削除）
 - **DB権限（設定済み）**：service_roleにpublic.users・submissions・progress・ai_reviewsのDELETE権限をGRANT済み。SupabaseのデフォルトではRLSポリシーによりservice_roleでもDELETEできないテーブルがある。管理者からの削除操作を伴うテーブルを新規追加する場合は同様のGRANTが必要
 - **注意**：public.usersとauth.usersは外部キーで繋がっていないため、両方を個別に削除する必要がある
+
+### 補習Level管理の実装詳細
+- `/admin/courses/[courseId]` ページ下部に「補習Level」専用カードを追加
+  - 補習Levelが未作成 → 「補習Levelを作成」ボタン（`addPracticeLevel` Server Action）
+  - 補習Levelが作成済み → 「補習Level管理 →」リンク（通常のLesson管理ページへ）
+- `addPracticeLevel`：`is_practice=true`・`title='補習問題'`・`concepts=[]` でINSERT。1コース1つ運用
+- 補習Levelは `is_practice=false` フィルタにより通常のLevel一覧テーブルには表示されない（管理画面専用の導線から唯一アクセスできる）
+- 補習Lessonの管理（追加・編集・削除・テストケース）は既存の `/admin/courses/[courseId]/levels/[levelId]` をそのまま使用
+- **Lesson作成/編集フォームに概念セレクタを追加**（通常Level・補習Level共通）
+  - `concepts` テーブルから全36概念をカテゴリ別グループ表示のチェックボックス
+  - `addLesson`：Lesson INSERT後に取得したIDで `lesson_concepts` に INSERT
+  - `updateLesson`：差し替え方式（既存 `lesson_concepts` を DELETE → 選択分を INSERT）
+  - 編集フォーム初期状態：`selectedConceptIds`（DB取得済み）を `defaultChecked` で反映
+  - `lesson_concepts` への書き込みは `createAdminClient()`（service_role、GRANT済み）で実行
+- **作問方針**：補習問題はAPI生成せず、ブラウザのClaude（Opus）で作問し管理画面から登録する運用
 
 ### /admin/stats の実装詳細
 - `stats/page.tsx`（Server Component）でRPC呼び出し → `StatsTree.tsx`（Client Component）に渡す
@@ -324,6 +340,11 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - テスト失敗時は`buildDiffRows(expected, actual)`で行ごとの差分をハイライト表示
 - 提出済みコードがある場合はinitialCodeとして復元（`passedCode`）
 - AIレビュー残数は`/api/users/me/ai-review-count`から取得（`{ remaining, limit, unlimited }`）
+- **合格時のボタン分岐**（`nextLessonId` の有無で判定）：
+  - `nextLessonId` あり → 「次のLessonへ →」（通常Lesson・中間）
+  - `nextLessonId` なし + `isLastLesson=true` → 「Levelクリア！一覧へ」（通常Lesson・最後）＋Levelサマリーモーダル表示
+  - `nextLessonId` なし + `isLastLesson=false` → 「ダッシュボードへ戻る」（補習Lesson・`levelUrl=/dashboard`）
+  - ※ `isLastLesson` で分岐していた旧ロジックを修正。`nextLessonId=null`・`isLastLesson=false` の補習Lessonで `/lessons/null` に飛ぶバグを防ぐ
 
 ---
 
@@ -335,20 +356,22 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 3. **理解度マップ**（`ConceptMap.tsx`）：`user_weaknesses` × `concepts` を集計してカテゴリ別理解度を表示
 
 ### 理解度マップの仕様
-- **フェーズ1（既存 Promise.all）**：admin で `user_weaknesses`・`concepts`・`lesson_concepts`（全件）を並列取得。concepts/lesson_concepts は authenticated GRANT 未設定のため admin 必須
+- **フェーズ1（Promise.all・6クエリ）**：admin で `user_weaknesses`・`concepts`・`lesson_concepts`（全件、`lessons(id,title,levels(is_practice))` をJOIN済み）を並列取得。concepts/lesson_concepts は authenticated GRANT 未設定のため admin 必須
 - カテゴリ集計：category 単位で `success/(success+fail)` を算出。データなしカテゴリは「まだ挑戦していません」
 - 弱点概念：`fail_count >= 1` かつ理解度低い順 TOP5 を「重点的に復習したい概念」として表示
-- **フェーズ2（弱点 TOP5 確定後）**：弱点概念に紐づく lesson_ids を絞って admin で失敗提出を `created_at DESC` 取得 → 各概念の最新失敗Lessonを特定し `reviewLesson: { id, title }` として付与
-- 「重点的に復習したい概念」リストの各項目に「`Lesson名`を復習する →」リンク（`/lessons/[id]`）を表示（reviewLesson が null の概念はリンクなし）
+- **reviewLesson 優先順位**（補習Lesson優先）：
+  1. その概念に紐づく `is_practice=true` のLesson（補習Lesson）があれば優先的に `reviewLesson` にセット（`isPractice=true`）→ 「補習問題を解く →」リンク
+  2. 補習Lessonが無ければ、**フェーズ2**（弱点Lessonへの失敗提出を `created_at DESC` 取得）でフォールバック（`isPractice=false`）→ 「`Lesson名`を復習する →」リンク
+- フェーズ2は補習Lessonが無い概念のみ対象（効率化）
+- `ConceptMap.tsx` は `CategoryStat`・`WeakConceptStat`（`conceptId`・`reviewLesson`・`isPractice` 含む）型を export。`page.tsx` でデータ集計後に props として渡す
 - カテゴリ表示順：理解度低い順（苦手順）→ データなしカテゴリを末尾
 - 空状態（user_weaknesses 0件）：「レッスンでAIレビューを受けると理解度が表示されます」を表示
-- `ConceptMap.tsx` は `CategoryStat`・`WeakConceptStat`（`conceptId`・`reviewLesson` 含む）型を export。`page.tsx` でデータ集計後に props として渡す
 
 ---
 
 ## AIメンター進化ロードマップ
 
-> **注意：段階1・段階2（フェーズ2-A・2-B）は実装済み。段階3以降は構想・未実装。**
+> **注意：段階1・段階2（フェーズ2-A・2-B）・段階3（補習Level方式）は実装済み。段階4は構想・未実装。**
 
 ### 背景・競合優位性
 
@@ -366,13 +389,17 @@ export async function applyMonthlyResetIfNeeded(supabase, userId, currentCount, 
 - **フェーズ2-A（データ基盤）**：concepts/lesson_concepts/user_weaknesses テーブルを作成。36概念マスタを投入し、`scripts/assign-concepts.ts` で128 Lessonに443件の概念を紐づけ済み
 - **フェーズ2-B（つまずき判定）**：AIレビュー時に失敗提出のみ `<weak_concepts>` タグで概念を判定。成功時は全概念の success_count +1、失敗時はAI判定概念の fail_count +1 を `user_weaknesses` にupsert。`updateUserWeaknesses()` 関数が `api/ai-reviews/route.ts` に実装済み
 
-**段階3：個別推薦**（部分実装済み）
-- **実装済み**：ダッシュボードの「重点的に復習したい概念」リストに「最新の失敗Lesson → 復習する」リンクを表示。`lesson_concepts` × `submissions(failed)` から復習対象Lessonを特定（`dashboard/page.tsx`）
-- **未実装**：弱点プロファイルと全Lessonの概念タグを照合し「弱点克服におすすめの未完了Lesson」を提示する汎用推薦機能
+**段階3：個別推薦**（✅ 実装済み・補習Level方式で採用）
+- **出題導線**：ダッシュボードの「重点的に復習したい概念」リストに補習Lesson優先のリンクを表示
+  - 補習Lessonあり → 「補習問題を解く →」（`isPractice=true`）
+  - 補習Lessonなし → 「`Lesson名`を復習する →」（最新失敗Lessonへのフォールバック）
+- **補習Level（案D）**：`levels.is_practice=true` の専用Levelを各コースに1つ作成し、概念に紐づく補習Lessonをその配下に配置。言語解決チェーン・採点・AIレビューが既存コードのまま使える。ユーザー向けLevel一覧・進捗集計から自動除外される
+- **補習Lessonの前後ナビ**：`lessons/[lessonId]/page.tsx` で `is_practice` を検出し `prevLessonId=null`・`nextLessonId=null`・`levelUrl='/dashboard'` を LessonClient に渡す。前後ナビ非表示・合格後は「ダッシュボードへ戻る」ボタン
 
-**段階4：動的Lesson生成**
+**段階4：動的Lesson生成**（構想・未実装）
 - 弱点に応じてAIが補習課題（問題文・初期コード・テストケース）を生成
 - コンテンツ供給がボトルネックでなくなり、言語・フレームワーク・インフラへとコース領域を無限に拡大できる
+- **当面の方針**：API自動生成ではなく、Claude Opus（ブラウザ）で作問→管理画面から登録する「事前用意した補習問題」方式を採用。API/Haikuでの自動生成は品質懸念のため保留。コンテンツ供給が人手で追いつかなくなった段階で動的生成を再検討する
 
 各段階は単独でも価値を出しつつ次段階の土台になる。段階1から順に実装する。
 
